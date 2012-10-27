@@ -10,10 +10,20 @@
 import std.container, std.algorithm, std.range, std.array, std.stdio;
 
 
+enum IsTerminal : bool { yes = true, no = false }
+enum IsEpsilon : bool { yes = true, no = false }
+
 struct Symbol {
     string name;
-    bool isTerminal = false;
-    bool isEpsilon = false;
+    IsTerminal isTerminal = IsTerminal.no;
+    IsEpsilon isEpsilon = IsEpsilon.no;
+
+    this(string name, IsTerminal term=IsTerminal.no, IsEpsilon eps=IsEpsilon.no)
+    {
+	this.name=name;
+	this.isTerminal=term;
+	this.isEpsilon=eps;
+    }
 
     const
     bool opEquals(ref const(Symbol) rhs)
@@ -32,8 +42,8 @@ struct Symbol {
     }
 }
 
-enum Epsilon = Symbol("ε", true, true);
-enum EOF = Symbol("$", true, false);
+enum Epsilon = Symbol("ε", IsTerminal.yes, IsEpsilon.yes);
+enum EOF = Symbol("$", IsTerminal.yes, IsEpsilon.no);
 
 bool NoEpsilon(Symbol sym) { return !sym.isEpsilon; }
 
@@ -41,6 +51,8 @@ struct Production
 {
     Symbol sym;
     Symbol[] rhs;
+
+    this(Symbol sym, Symbol[] rhs) { this.sym = sym; this.rhs=rhs; }
 
     const
     bool opEquals(ref const(Production) rhs)
@@ -53,6 +65,13 @@ struct Grammar
 {
     Symbol startSymbol;
     Production[] productions;
+
+    this(Symbol start, Production[] prods=[])
+    {
+	startSymbol = start;
+	if(prods.length)
+	    productions = prods;
+    }
 
     alias RedBlackTree!Symbol Set;
     const
@@ -192,20 +211,20 @@ struct Grammar
 }
 
 unittest {
-    immutable Symbol A = { "A" };
-    immutable Symbol B = { "B" } ;
-    immutable Symbol C = { "C" };
-    immutable Symbol a = { "a", true };
-    immutable Symbol b = { "b", true };
-    immutable Symbol c= { "c", true };
+    immutable Symbol A = Symbol( "A" );
+    immutable Symbol B = Symbol( "B" );
+    immutable Symbol C = Symbol( "C" );
+    immutable Symbol a = Symbol( "a", IsTerminal.yes );
+    immutable Symbol b = Symbol( "b", IsTerminal.yes );
+    immutable Symbol c= Symbol( "c", IsTerminal.yes );
 
-    Production prd5 = { C, [A, B, C] };
-    Production prd3 = { B, [b] };
-    Production prd1 = { A, [ a ] };
-    Production prd2 = { B, [B, A ]};
-    Production prd4 = { B, [Epsilon] };
-    Production prd6 = { A, [Epsilon] };
-    Production prd7 = { C, [ c ] };
+    Production prd5 = Production( C, [A, B, C] );
+    Production prd3 = Production( B, [b] );
+    Production prd1 = Production( A, [ a ] );
+    Production prd2 = Production( B, [B, A ]);
+    Production prd4 = Production( B, [Epsilon] );
+    Production prd6 = Production( A, [Epsilon] );
+    Production prd7 = Production( C, [ c ] );
 
     Grammar g = Grammar(C, []);
     g.addProductions([prd1, prd2, prd3, prd4, prd5, prd6, prd7]);
@@ -237,28 +256,6 @@ private void printSet(Grammar.Set[Symbol] sets)
 
 int main()
 {
-    immutable Symbol A = { "A" };
-    immutable Symbol B = { "B" } ;
-    immutable Symbol C = { "C" };
-    immutable Symbol a = { "a", true };
-    immutable Symbol b = { "b", true };
-    immutable Symbol c= { "c", true };
-
-    Production prd5 = { C, [A, B, C] };
-    Production prd3 = { B, [b] };
-    Production prd1 = { A, [ a ] };
-    Production prd2 = { B, [B, A ]};
-    Production prd4 = { B, [Epsilon] };
-    Production prd6 = { A, [Epsilon] };
-    Production prd7 = { C, [ c ] };
-
-    Grammar g = Grammar(C, []);
-    writeln(g.startSymbol);
-    g.addProductions([prd1, prd2, prd3, prd4, prd5, prd6, prd7]);
-
-    printSet(g.firstSets());
-    writeln;
-    printSet(g.followSets());
     return 0;
 }
 
