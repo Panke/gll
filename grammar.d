@@ -199,12 +199,13 @@ struct Grammar
     {
         productions ~= prod;
         if(mod == AddMod.Sort)
-            schwartzSort!((a) => a.sym)(productions);
+            sort(productions);
     }
 
     void addProductions(Production[] prods)
     {
         foreach(p; prods) addProduction(p, AddMod.DontSort);
+        sort(productions);
     }
 
     const @property
@@ -236,7 +237,7 @@ unittest {
     immutable Symbol C = Symbol( "C" );
     immutable Symbol a = Symbol( "a", IsTerminal.yes );
     immutable Symbol b = Symbol( "b", IsTerminal.yes );
-    immutable Symbol c= Symbol( "c", IsTerminal.yes );
+    immutable Symbol c = Symbol( "c", IsTerminal.yes );
 
     Production prd5 = Production( C, [A, B, C] );
     Production prd3 = Production( B, [b] );
