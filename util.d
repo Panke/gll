@@ -1,3 +1,4 @@
+module org.panke.util;
 /**
  * helper functions for gll.d
  */
@@ -42,7 +43,7 @@ private struct _Subsets(Range, bool safe=true)
     }
 
     @property
-    E[] front()
+    auto front()
     {
         static if(safe)
             return map!(x => x.front)(_indices).array;
@@ -53,7 +54,6 @@ private struct _Subsets(Range, bool safe=true)
     @property
     bool empty()
     {
-
         return _alwaysEmpty || _empty;
     }
 
@@ -116,6 +116,13 @@ unittest
 
     range = _Subsets!(int[])(arr, 10);
     assert(walkLength(range) == 0);
+
+    const(int[]) arr4 = [];
+    auto r4 = subsets(arr4, 1);
+    assert(walkLength(r4) == 0);
+
+    const(int[]) arr5 = arr.dup;
+    auto r5 = arr5.filter!("a % 2 == 0");
+    assert(walkLength(_Subsets!(typeof(r5))(r5, 1)) == 3);
+    assert(walkLength(_Subsets!(typeof(r5))(r5, 2)) == 3);
 }
-
-

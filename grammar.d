@@ -7,8 +7,10 @@
  */
 
 
-import std.container, std.algorithm, std.range, std.array, std.stdio;
+import  std.container, std.algorithm, std.range, std.array, std.stdio,
+        std.typecons, std.conv;
 
+import org.panke.util;
 
 enum IsTerminal : bool { yes = true, no = false }
 enum IsEpsilon : bool { yes = true, no = false }
@@ -72,6 +74,12 @@ struct Production
     {
         return sym == rhs.sym && this.rhs == rhs.rhs;
     }
+
+    const
+    string toString()
+    {
+        return sym.name ~ " --> " ~ to!string(joiner(map!(x => x.name.dup)(rhs), " "));
+    }
 }
 
 unittest {
@@ -94,6 +102,44 @@ struct Grammar
     }
 
     alias RedBlackTree!Symbol Set;
+    alias Tuple!(Set[Symbol], "first", Set[Symbol], "follow",
+                 Set[const(Production)], "firstPlus") Sets;
+
+    const
+    bool isLL1(Symbol nonterm, Sets sets = Sets())
+    {
+        if(sets.first !is null)
+            sets = firstFallowSets;
+
+        // productions for sym
+        auto prods = productions.filter!(x => x.sym == nonterm);
+        foreach(pair; subsets!(typeof(prods), false)(prods, 2))
+        {
+            auto first = pair.front; pair.popFront;
+            auto second = pair.front;
+            if(ambigious(firstFallowSets, first, second))
+                return false;
+        }
+        return true;
+    }
+
+    const
+    bool isLL1(Sets sets = Sets.init)
+    {
+        auto ffSets = sets == Sets.init ? firstFallowSets : sets;
+        auto m = map!((Symbol x) => isLL1(x, ffSets))(this.nonterminals);
+        return ! m.canFind(false);
+    }
+
+    const
+    bool ambigious(Sets sets, in Production lhs, in Production rhs)
+    {
+        auto lhsFsp = sets.firstPlus[lhs];
+        auto rhsFsp = sets.firstPlus[rhs];
+        return setIntersection(lhsFsp[], rhsFsp[]).walkLength > 0;
+    }
+
+
     const
     Set[Symbol] firstSets()
         out(result) { assert(result !is null); }
@@ -152,12 +198,12 @@ struct Grammar
     }
 
     const @property
-    Set[Symbol] followSets()
+    Set[Symbol] followSets(Set[Symbol] _first = null)
         out(result) { assert(result !is null); }
     body
     {
         Set[Symbol] follow;
-        Set[Symbol] first = this.firstSets;
+        Set[Symbol] first = _first is null ? this.firstSets : _first;
         // initialize sets, i hate you std.container
         foreach(sym; symbols)
         {
@@ -195,8 +241,36 @@ struct Grammar
         return follow;
     }
 
-    const
-    Symbol[][Symbol] followSet();
+    const @property
+    Sets firstFallowSets(Set[Symbol] _first = null, Set[Symbol] _follow = null)
+        out(result) { assert(result.first !is null); }
+    body
+    {
+        Set[Symbol] first = _first is null ? firstSets : _first;
+        Set[Symbol] follow = _follow is null ? followSets(_first) : _follow;
+        Set[const(Production)] firstPlus;
+        foreach(prod; productions)
+        {
+            Set tmp = make!Set();
+            foreach(i, sym; prod.rhs)
+            {
+                tmp.insert(first[sym][].filter!NoEpsilon);
+                // last item contains epsilon
+                if(Epsilon in first[sym])
+                {
+                    if(i == prod.rhs.length - 1)
+                        tmp.insert(Epsilon);
+                }
+                else break;
+            }
+
+            if(Epsilon in tmp)
+                tmp.insert(follow[prod.sym][]);
+
+            firstPlus[prod] = tmp;
+        }
+        return Sets(first, follow, firstPlus);
+    }
 
     enum AddMod { Sort, DontSort };
     void addProduction(ref Production prod, AddMod mod = AddMod.Sort)
@@ -286,15 +360,41 @@ unittest {
     assert(equal(fls[C][], [EOF]));
     assert(fls[A].length == fls[B].length);
     assert(fls[A].length == 4);
+    assert(g.isLL1 == false);
 }
 
 
-private void printSet(Grammar.Set[Symbol] sets)
+unittest {
+    immutable Symbol S = Symbol( "S" );
+    immutable Symbol A = Symbol( "A" );
+    immutable Symbol B = Symbol( "B" );
+    immutable Symbol C = Symbol( "C" );
+    immutable Symbol a = Symbol( "a", IsTerminal.yes );
+    immutable Symbol b = Symbol( "b", IsTerminal.yes );
+    immutable Symbol c = Symbol( "c", IsTerminal.yes );
+
+    Production prd1 = Production( S, [A, B, C] );
+    Production prd2 = Production( B, [b] );
+    Production prd3 = Production( A, [ a ] );
+    Production prd4 = Production( A, [ b, C ] );
+    Production prd5 = Production( A, [ C, C, C ] );
+    Production prd6 = Production( C, [ c ] );
+
+    Grammar g = Grammar(A, []);
+    g.addProductions([prd1, prd2, prd3, prd4, prd5, prd6]);
+
+    auto fs = g.firstSets();
+    assert(g.isLL1 == true);
+    auto fsp = g.firstFallowSets;
+}
+
+
+private void printSet(T)(Grammar.Set[T] sets)
 {
-    foreach(sym; sets.byKey())
+    foreach(t; sets.byKey())
     {
-        writef("%s: ", sym.name);
-        auto fs = sets[sym];
+        writef("%s: ", to!string(t));
+        auto fs = sets[t];
         foreach(first; fs)
         {
             writef("%s ", first.name);
@@ -303,8 +403,4 @@ private void printSet(Grammar.Set[Symbol] sets)
     }
 }
 
-int main()
-{
-    return 0;
-}
-
+void main() {}
