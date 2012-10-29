@@ -96,6 +96,8 @@ struct Grammar
     alias RedBlackTree!Symbol Set;
     const
     Set[Symbol] firstSets()
+        out(result) { assert(result !is null); }
+    body
     {
         Set[Symbol] sets;
         // initialize sets
@@ -151,6 +153,8 @@ struct Grammar
 
     const @property
     Set[Symbol] followSets()
+        out(result) { assert(result !is null); }
+    body
     {
         Set[Symbol] follow;
         Set[Symbol] first = this.firstSets;
