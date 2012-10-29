@@ -24,7 +24,7 @@ private struct _Subsets(Range, bool safe=true)
             _indices[i] = r.save;
             if(r.empty)
             {
-                _alwaysEmpty = true; // size > r.length;
+                this. _alwaysEmpty = true; // size > r.length;
                 break;
             }
             r.popFront;
@@ -43,7 +43,8 @@ private struct _Subsets(Range, bool safe=true)
     @property
     bool empty()
     {
-        return _empty || _alwaysEmpty || _indices[$-1] == _indices[$-2];
+
+        return _alwaysEmpty || _empty;
     }
 
 
@@ -62,8 +63,9 @@ private struct _Subsets(Range, bool safe=true)
         bool found = false;
         // assumption: _indices.length >= 2
         size_t idx = _indices.length - 1;
-        do {
-            idx--;
+        foreach_reverse(i; 0 .. idx)
+        {
+            idx = i;
             tmp =_indices[idx].save;
             _indices[idx].popFront;
             if(_indices[idx] != old)
@@ -72,7 +74,8 @@ private struct _Subsets(Range, bool safe=true)
                 break;
             }
             swap(tmp, old);
-        } while(idx != 0);
+        }
+
         if(!found)
             return true; //empty now
 
@@ -94,9 +97,15 @@ unittest
     assert(walkLength(range) == 15);
 
     auto r2 = arr.filter!("a % 2 == 0");
-    foreach(e; _Subsets!(typeof(r2))(r2, 1))
-        writeln(e);
+    assert(walkLength(_Subsets!(typeof(r2))(r2, 1)) == 3);
+    assert(walkLength(_Subsets!(typeof(r2))(r2, 2)) == 3);
+
+    int[] arr2 = [];
+    auto r3 = _Subsets!(int[])(arr2, 1);
+    assert(walkLength(r3) == 0);
+
+    range = _Subsets!(int[])(arr, 10);
+    assert(walkLength(range) == 0);
 }
 
-void main() {}
 
