@@ -228,7 +228,31 @@ struct Grammar
         return chain(terminals, nonterminals);
     }
 
+    /**
+     * normalize grammer by removing duplicates etc.
+     *
+     */
+    void normalize()
+    {
+        removeDuplicates();
+    }
 
+private:
+    void removeDuplicates()
+    {
+        Production[] newArr = productions.uniq.array;
+        productions = newArr;
+    }
+}
+
+unittest {
+
+    Symbol symA = Symbol("A");
+    Symbol symB = Symbol("B");
+    Production p1 = Production(symA, [symB, symB]);
+    Grammar g = Grammar(symA, [p1, p1]);
+    g.normalize;
+    assert(g.productions.length == 1);
 }
 
 unittest {
