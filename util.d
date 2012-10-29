@@ -6,6 +6,16 @@ import std.range, std.algorithm, std.stdio;
 
 
 
+auto subsets(Range, bool safe=true)(Range range, size_t size)
+{
+    return _Subsets!(Range, safe)(range, size);
+}
+
+unittest {
+    int[] arr = [1, 2, 3, 4];
+    auto range = subsets(arr, 2);
+}
+
 private struct _Subsets(Range, bool safe=true)
     if(isForwardRange!Range)
 {
