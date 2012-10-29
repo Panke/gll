@@ -55,10 +55,30 @@ struct Production
     this(Symbol sym, Symbol[] rhs) { this.sym = sym; this.rhs=rhs; }
 
     const
+    int opCmp(ref const(Production) op)
+    {
+        int symCmp;
+        symCmp = sym < op.sym ? -1 : symCmp;
+        symCmp = sym > op.sym ? 1 : symCmp;
+
+        if(symCmp == 0)
+            return this.rhs < op.rhs ? -1 : (this.rhs > op.rhs);
+        else
+            return symCmp;
+    }
+
+    const
     bool opEquals(ref const(Production) rhs)
     {
         return sym == rhs.sym && this.rhs == rhs.rhs;
     }
+}
+
+unittest {
+    Production a, b;
+    assert(is(typeof(a < b)));
+    assert(is(typeof(a > b)));
+    assert(is(typeof(a == b)));
 }
 
 struct Grammar
