@@ -63,6 +63,9 @@ private struct _Subsets(Range, bool safe=true)
 
     bool _popFront()
     {
+        if(_indices.length == 0)
+            return true;
+
         auto old = _indices[$-1].save;
         auto tmp = _indices[$-1].save;
 
@@ -71,7 +74,7 @@ private struct _Subsets(Range, bool safe=true)
             return false; // not empty
 
         bool found = false;
-        // assumption: _indices.length >= 2
+
         size_t idx = _indices.length - 1;
         foreach_reverse(i; 0 .. idx)
         {
@@ -109,6 +112,7 @@ unittest
     auto r2 = arr.filter!("a % 2 == 0");
     assert(walkLength(_Subsets!(typeof(r2))(r2, 1)) == 3);
     assert(walkLength(_Subsets!(typeof(r2))(r2, 2)) == 3);
+    assert(walkLength(subsets(map!"a*a"(r2), 2)) == 3);
 
     int[] arr2 = [];
     auto r3 = _Subsets!(int[])(arr2, 1);
@@ -125,4 +129,12 @@ unittest
     auto r5 = arr5.filter!("a % 2 == 0");
     assert(walkLength(_Subsets!(typeof(r5))(r5, 1)) == 3);
     assert(walkLength(_Subsets!(typeof(r5))(r5, 2)) == 3);
+
+    int[] arr6 = [];
+    assert(walkLength(subsets(arr6, 0)) == 1);
+}
+
+debug(main)
+{
+    void main() {}
 }

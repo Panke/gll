@@ -403,4 +403,3 @@ private void printSet(T)(Grammar.Set[T] sets)
     }
 }
 
-void main() {}
