@@ -136,5 +136,5 @@ unittest
 
 debug(main)
 {
-    void main() {}
+    void main() { writeln("test"); }
 }
