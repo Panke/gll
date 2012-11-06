@@ -1,7 +1,9 @@
+module gll.gll;
+
 import std.algorithm, std.range, std.array, std.container, std.traits,
        std.functional, std.stdio, std.file, std.format, std.conv;
 
-import grammar;
+import gll.grammar;
 
 struct Generator(Sink)
     if(isOutputRange!(Sink, char))
@@ -81,6 +83,4 @@ unittest {
     auto app = appender!(string)();
     auto gen = Generator!(typeof(app))(&g, app);
     //gen.genGrammarSlotEnum(app);
-    writeln(app.data);
 }
-void main() {}

@@ -1,3 +1,4 @@
+module gll.grammar;
 /**
  *
  * This modules includes functionality to deal with grammars.

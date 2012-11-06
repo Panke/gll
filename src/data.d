@@ -1,3 +1,4 @@
+module gll.data;
 
 import  std.range, std.algorithm, std.array, std.stdio, std.typecons,
        std.format;
@@ -7,7 +8,7 @@ import  std.range, std.algorithm, std.array, std.stdio, std.typecons,
  * as well as the sets U_i
  */
 
-import grammar;
+import gll.grammar;
 
 struct InputPos
 {
@@ -109,7 +110,7 @@ struct Gss
      * Given and identifier, look up the real thing and
      * return a pointer to it.
      */
-    GssNode opIndex(GssId id) { return _data[id]; }
+    ref GssNode opIndex(GssId id) { return _data[id]; }
 
     /**
      * Write a dot file representing the gss into output
@@ -155,22 +156,6 @@ struct Gss
      * Remember all elements that have been popped so far.
      */
     private InputPos[][GssId] _popped;
-}
-
-unittest {
-
-    Gss gss = Gss();
-
-    Gss.GssId last = 0;
-    foreach(ushort i; 0 .. 12)
-    {
-        auto ret = gss.create(GrammarSlot(i), InputPos(i+2), last);
-        last = ret.id;
-    }
-
-    auto app = appender!string();
-    gss.gssToDot(null, app);;
-    writeln(app.data);
 }
 
 struct Descriptor
@@ -371,7 +356,3 @@ private:
     }
 }
 
-debug(main)
-{
-    void main() {}
-}

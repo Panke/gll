@@ -131,8 +131,3 @@ unittest
     int[] arr6 = [];
     assert(walkLength(subsets(arr6, 0)) == 1);
 }
-
-debug(util)
-{
-    void main() { writeln("test"); }
-}
