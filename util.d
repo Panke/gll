@@ -1,10 +1,8 @@
-module org.panke.util;
 /**
  * helper functions for gll.d
  */
 
 import std.range, std.algorithm, std.stdio;
-
 
 
 auto subsets(Range, bool safe=true)(Range range, size_t size)

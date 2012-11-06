@@ -10,10 +10,16 @@
 import  std.container, std.algorithm, std.range, std.array, std.stdio,
         std.typecons, std.conv;
 
-import org.panke.util;
+import util;
 
 enum IsTerminal : bool { yes = true, no = false }
 enum IsEpsilon : bool { yes = true, no = false }
+
+struct GrammarSlot
+{
+    ushort _pos;
+    alias _pos this;
+}
 
 struct Symbol {
     string name;
