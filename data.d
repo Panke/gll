@@ -1,5 +1,5 @@
 
-import std.container, std.range, std.algorithm, std.array, std.stdio, std.typecons,
+import  std.range, std.algorithm, std.array, std.stdio, std.typecons,
        std.format;
 
 /*
@@ -33,12 +33,11 @@ struct Gss
         this(GssLabel _label)
         {
             label = _label;
-            parents.insertBack(12);
-            parents.clear;
+            parents = new Array!GssId();
         }
 
         GssLabel label;
-        Array!GssId parents;
+        Array!GssId* parents;
     }
 
     // can be used to lookup a gssNode
@@ -68,26 +67,22 @@ struct Gss
         // check if there already exists a GssNode labelled (slot, i)
         GssLabel label = GssLabel(slot, pos);
         GssId id;
-        if(auto node = label in _index)
+        if(auto idxptr = label in _index)
         {
             // node exists, does edge to designated parent exist?
-            id = *node;
-            if(!canFind(_data[id].parents[], parent))
+            id = *idxptr;
+            GssNode node = _data[id];
+            if(!canFind((*node.parents)[], parent))
             {
-                _data[id].parents.insertBack(parent);
-                writefln("adding parent %d to %d", parent, id);
+                node.parents.insertBack(parent);
             }
         } else
         {
             id = cast(GssId) _data.length;
-            GssNode newNode = GssNode(GssLabel(slot, pos));
-            _data.insertBack(newNode);
-            if(!canFind(_data[id].parents[], parent))
-            {
-                _data[id].parents.insertBack(parent);
-                writefln("adding parent %d to %d", parent, id);
-                assert(_data[id].parents.length > 0);
-            }
+            GssNode node = GssNode(GssLabel(slot, pos));
+            node.parents.insertBack(parent);
+            _data.insertBack(node);
+            _index[node.label] = id;
         }
 
         // check if it was previously popped
@@ -107,7 +102,7 @@ struct Gss
         entry ~= pos;
         _popped[elem] = entry;
 
-        return _data[elem].parents[];
+        return (*_data[elem].parents)[];
     }
 
     /**
@@ -124,7 +119,7 @@ struct Gss
         output.put("strict digraph Gss {\n");
         string[string] nodeAttrs = ["shape":"box", "style":"solid", "regular":"1"];
         foreach(key; nodeAttrs.byKey)
-            formattedWrite(output, "node %s=\"%s\"\n", key, nodeAttrs[key]);
+            formattedWrite(output, "node [%s=%s];\n", key, nodeAttrs[key]);
 
         output.put("\n");
 
@@ -132,14 +127,14 @@ struct Gss
         foreach(GssNode node; _data[])
         {
             i++;
-            formattedWrite(output, "n%d label=\"L:%d, P:%d\"\n", i,node.label.slot, node.label.pos);
+            formattedWrite(output, "n%d [label=\"L:%d, P:%d\"]\n", i,node.label.slot, node.label.pos);
         }
 
         i = 0;
         foreach(GssNode node; _data)
         {
             i++;
-            foreach(parent; node.parents)
+            foreach(parent; (*node.parents)[])
                 formattedWrite(output, "n%d -> n%d\n", i, parent);
         }
 
@@ -174,7 +169,7 @@ unittest {
     }
 
     auto app = appender!string();
-    gss.gssToDot(null, app);
+    gss.gssToDot(null, app);;
     writeln(app.data);
 }
 
@@ -256,7 +251,7 @@ private:
             return;
 
         _U[idx][elem] = true;
-        _R[idx].insert(desc);
+        _R[idx].insertBack(desc);
     }
 }
 
@@ -291,4 +286,92 @@ class GllContext
         foreach(id; r)
             add(gss[u].label.slot, pos, id);
     }
+}
+
+/**
+ * Simple and dump, dynamically growing vector class
+ * that has value semantics and allocates from the gc heap.
+ *
+ * Used because std.container gives me headaches.
+ */
+
+
+struct Array(T)
+{
+    this(this)
+    {
+        debug writeln("array dupped");
+        _data = _data.dup;
+    }
+
+    void insertBack(U)(U elem)
+        if(is(U : T))
+    {
+        if(_data.length == _length)
+            resize();
+        assert(_data.length > _length);
+        _data[_length] = elem;
+        ++_length;
+    }
+
+    ref T opIndex(size_t idx)
+    {
+        debug assert(idx < _length);
+        return _data[idx];
+    }
+
+    @property
+    size_t length() { return _length; }
+
+    @property
+    void length(size_t newLength)
+    {
+        debug assert(newLength >= 0);
+        if(newLength > _length)
+            resize(newLength);
+        _length = newLength;
+    }
+
+    Range opSlice()
+    {
+        return Range(_data[0 .. _length]);
+    }
+
+    Range opSlice(size_t start, size_t end)
+    {
+        debug assert(start > 0);
+        debug assert(start > 0);
+        debug assert(end <= _length);
+        return Range(_data[start .. end]);
+    }
+
+    T removeAny()
+    {
+        debug assert(_length > 0);
+        _length--;
+        return _data[_length];
+    }
+
+private:
+    void resize(size_t cap = 0 )
+    {
+        if(cap > _data.length)
+            _data.length = cap;
+        else
+            _data.length = cast(size_t) ((_data.length+128) * 1.5);
+    }
+
+    T[] _data;
+    size_t _length;
+
+    struct Range
+    {
+        T[] slice;
+        alias slice this;
+    }
+}
+
+debug(main)
+{
+    void main() {}
 }

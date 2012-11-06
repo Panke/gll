@@ -132,7 +132,7 @@ unittest
     assert(walkLength(subsets(arr6, 0)) == 1);
 }
 
-debug(main)
+debug(util)
 {
     void main() { writeln("test"); }
 }
