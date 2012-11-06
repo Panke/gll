@@ -1,0 +1,3 @@
+[submodule "subs/probat"]
+	path = subs/probat
+	url = git@github.com:Panke/probat
