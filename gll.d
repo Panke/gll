@@ -1,19 +1,11 @@
 import std.algorithm, std.range, std.array, std.container, std.traits,
-       std.functional, std.stdio, std.file, std.format;
+       std.functional, std.stdio, std.file, std.format, std.conv;
 
 import grammar;
 
 struct Generator(Sink)
     if(isOutputRange!(Sink, char))
 {
-    struct Indent
-    {
-        int n;
-        this(int n_) { n = n_; curIndent += n; }
-        ~this() { curIndent -= n; }
-    }
-
-
     const(Grammar)* gram;
     Sink sink;
     size_t curIndent;
@@ -27,34 +19,42 @@ struct Generator(Sink)
     void generateParser(Sink sink)
     {
         // generate preamble
-        genGrammarSlotEnum();
+        //genGrammarSlotEnum(sink);
     }
 
-    void genGrammarSlotEnum(Sink sink)
-    {
-        put("enum Label\n{\n");
-        foreach(prod; gram.productions)
-        {
-            Indent indent1 = Indent(4);
-            foreach(i; iota(0, prod.rhs.length))
-            {
-                string[] parts = [prod.sym];
-                put(joiner(parts ~ prod.rhs[0..i], '_').array);
-                put("\n");
-            }
-        }
-        put("}\n");
-    }
-
+//     void genGrammarSlotEnum(Sink sink)
+//     {
+//         put("enum Label\n{\n");
+//         foreach(prod; gram.productions)
+//         {
+//             enum in_ = indent();
+// //             mixin(indent());
+//             foreach(i; iota(0, prod.rhs.length))
+//             {
+//                 string[] parts = [prod.sym];
+//                 put(joiner(parts ~ prod.rhs[0..i], '_').array);
+//                 put("\n");
+//             }
+//         }
+//         put("}\n");
+//     }
+// //
     void put(Range)(Range range)
-        if(isInputRange!(Range) && is(ElementType!Range : char))
+        if(isInputRange!(Range) && is(ElementType!Range : dchar))
     {
-        string indent = repeat(' ', curIndent).array;
-        foreach(line; split(range, '\n'))
+        string indent = cast(string) repeat(' ', curIndent).array;
+        foreach(line; split(range, "\n"))
         {
             sink.put(indent);
-            sink.put.line;
+            sink.put(line);
         }
+    }
+
+    string indent(uint width=4)
+    {
+        string result = "curIndent += " ~ to!string(width) ~ ";\n";
+        result ~= "scope(exit) curIndent -= " ~ to!string(width) ~ ";\n";
+        return result;
     }
 }
 
@@ -80,8 +80,7 @@ unittest {
 
     auto app = appender!(string)();
     auto gen = Generator!(typeof(app))(&g, app);
-    auto app = appender!string();
-    gen.genGrammarSlotEnum(app);
+    //gen.genGrammarSlotEnum(app);
     writeln(app.data);
 }
 void main() {}

@@ -408,4 +408,3 @@ private void printSet(T)(Grammar.Set[T] sets)
         writeln;
     }
 }
-

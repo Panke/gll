@@ -33,6 +33,8 @@ struct Gss
         this(GssLabel _label)
         {
             label = _label;
+            parents.insertBack(12);
+            parents.clear;
         }
 
         GssLabel label;
@@ -71,11 +73,21 @@ struct Gss
             // node exists, does edge to designated parent exist?
             id = *node;
             if(!canFind(_data[id].parents[], parent))
+            {
                 _data[id].parents.insertBack(parent);
+                writefln("adding parent %d to %d", parent, id);
+            }
         } else
         {
             id = cast(GssId) _data.length;
-            _data.insertBack(GssNode(GssLabel(slot, pos)));
+            GssNode newNode = GssNode(GssLabel(slot, pos));
+            _data.insertBack(newNode);
+            if(!canFind(_data[id].parents[], parent))
+            {
+                _data[id].parents.insertBack(parent);
+                writefln("adding parent %d to %d", parent, id);
+                assert(_data[id].parents.length > 0);
+            }
         }
 
         // check if it was previously popped
@@ -107,21 +119,29 @@ struct Gss
     /**
      * Write a dot file representing the gss into output
      */
-    void gssToDot(Out)(Out output)
+    void gssToDot(Out)(Grammar* gram, Out output)
     {
         output.put("strict digraph Gss {\n");
         string[string] nodeAttrs = ["shape":"box", "style":"solid", "regular":"1"];
-        foreach(key; nodeAttrs.byKeys)
-            formattedWrite(output, "node %s=%s\n", key, nodeAttrs[key]);
+        foreach(key; nodeAttrs.byKey)
+            formattedWrite(output, "node %s=\"%s\"\n", key, nodeAttrs[key]);
 
         output.put("\n");
 
-        foreach(i, node; gss)
-            formattedWrite(output, "n%d label=\"L:%d, P:%d\"\n", node.label.slot, node.label.pos);
+        size_t i = 0;
+        foreach(GssNode node; _data[])
+        {
+            i++;
+            formattedWrite(output, "n%d label=\"L:%d, P:%d\"\n", i,node.label.slot, node.label.pos);
+        }
 
-        foreach(i, node; gss)
+        i = 0;
+        foreach(GssNode node; _data)
+        {
+            i++;
             foreach(parent; node.parents)
                 formattedWrite(output, "n%d -> n%d\n", i, parent);
+        }
 
         output.put("\n}\n");
     }
@@ -142,6 +162,21 @@ struct Gss
     private InputPos[][GssId] _popped;
 }
 
+unittest {
+
+    Gss gss = Gss();
+
+    Gss.GssId last = 0;
+    foreach(ushort i; 0 .. 12)
+    {
+        auto ret = gss.create(GrammarSlot(i), InputPos(i+2), last);
+        last = ret.id;
+    }
+
+    auto app = appender!string();
+    gss.gssToDot(null, app);
+    writeln(app.data);
+}
 
 struct Descriptor
 {
