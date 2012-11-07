@@ -11,9 +11,11 @@ testflags = -debug -unittest -g
 releaseflags = -release -O -inline -noboundscheck
 devflags = -debug -g -unittest
 
-.PHONY: test runtest
+.PHONY: test runtest release  dev
 
-dev: $(gllsrc) $(probatsrc) ${main}
+dev: build/dev
+
+build/dev: $(gllsrc) $(probatsrc) ${main}
 	- mkdir build 2> /dev/null
 	${DC} $(commonflags) $(devflags) -ofbuild/dev -odbuild $(FLAGS) ${gllsrc} ${main}
 
@@ -26,7 +28,9 @@ build/test: $(gllsrc) $(testsrc)
 runtest: build/test
 	build/test $(P)
 
-release: $(gllsrc) $(main)
+release: build/release
+
+build/release: $(gllsrc) $(main)
 	- mkdir build 2> /dev/null
 	${DC} $(commonflags) -ofbuild/gllgen -od/build $(releaseflags) $(FLAGS) $(gllsrc) $(main)
 
