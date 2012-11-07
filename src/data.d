@@ -43,7 +43,7 @@ struct Gss
 
     // can be used to lookup a gssNode
     // 2^32 should be more than enough
-    alias uint GssId;
+    struct GssId { uint _id; alias _id this; }
     alias GssId[const(GssLabel)] GssLookupTable;
 
     enum L0 = GssLabel(GrammarSlot(0), InputPos(0));
@@ -79,7 +79,7 @@ struct Gss
             }
         } else
         {
-            id = cast(GssId) _data.length;
+            id = GssId(cast(ushort) _data.length);
             GssNode node = GssNode(GssLabel(slot, pos));
             node.parents.insertBack(parent);
             _data.insertBack(node);
@@ -97,7 +97,7 @@ struct Gss
         in { assert(elem != 0); } // 0 is GssId of L0
     body
     {
-        auto entry = _popped[elem];
+        auto entry = _popped.get(elem, []);
         if(entry.length != 0)
             assumeSafeAppend(entry);
         entry ~= pos;
