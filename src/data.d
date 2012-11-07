@@ -1,7 +1,7 @@
 module gll.data;
 
 import  std.range, std.algorithm, std.array, std.stdio, std.typecons,
-       std.format;
+       std.format, std.exception;
 
 /*
  * This module implements the GSS and SPPF needed in every gll parser,
@@ -181,10 +181,12 @@ private:
     size_t ringLength;
     size_t curPos;
 
-    this(size_t ringLength)
+public:
+    this(size_t _ringLength)
     {
-        _R.length = ringLength;
-        _U.length = ringLength;
+        _R.length = _ringLength;
+        _U.length = _ringLength;
+        this.ringLength = _ringLength;
     }
 
     @property
@@ -212,16 +214,10 @@ private:
     }
 
     Descriptor pop()
-    in
     {
-        assert(!empty);
-    }
-    body
-    {
+        enforce(!empty);
         return _R[curPos].removeAny;
     }
-
-
 
     void add(GrammarSlot slot, InputPos pos, Gss.GssId top)
     {
