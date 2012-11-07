@@ -6,7 +6,7 @@ main = src/main.d
 testmain = tests/testmain.d
 DC ?= dmd
 
-commonflags = -w -Isubs
+commonflags = -Isubs
 testflags = -debug -unittest -g
 releaseflags = -release -O -inline -noboundscheck
 devflags = -debug -g -unittest
