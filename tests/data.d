@@ -44,6 +44,13 @@ unittest
 
     testCase("check multiple insertion of same element",
     {
+        enum rl = 4;
+        PendingSet set = PendingSet(rl);
+        assert(set.empty);
+        foreach(ushort i; 0..10)
+            set.add(GrammarSlot(12), InputPos(12), GssId(12));
 
+        assert(!set.empty);
+        assEq(set.length, 1);
     });
 }

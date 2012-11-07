@@ -206,6 +206,12 @@ public:
         return empty;
     }
 
+    @property
+    size_t length()
+    {
+        return reduce!"a+b"(map!(r => r.length)(_R));
+    }
+
     void dropFirst()
     {
         _U[curPos].clear;
