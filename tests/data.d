@@ -7,14 +7,21 @@ import probat.all;
 import gll.data;
 import gll.grammar;
 
-alias Gss.GssId GssId;
+enum TestLabel
+{
+    A, B, C, D
+}
+
+alias Gll!TestLabel.PendingSet PendingSet;
+alias Gll!TestLabel.Descriptor Descriptor;
+alias TestLabel GrammarSlot;
 unittest
 {
     testCase("add and remove descriptor from PendingSet",
     {
         enum rl = 4;
         PendingSet set = PendingSet(rl);
-        Descriptor desc = Descriptor(GrammarSlot(1), InputPos(1), GssId(0));
+        Descriptor desc = Descriptor(cast(GrammarSlot) 1, InputPos(1), GssId(0));
         set.add(desc);
         auto res = set.pop();
         assEq(res, desc);
@@ -27,15 +34,15 @@ unittest
         assert(set.empty);
         foreach(ushort i; 0..4)
         {
-            set.add(GrammarSlot(i), InputPos(1), GssId(0));
-            set.add(GrammarSlot(i), InputPos(2), GssId(0));
+            set.add(cast(GrammarSlot) i, InputPos(1), GssId(0));
+            set.add(cast(GrammarSlot) i, InputPos(2), GssId(0));
         }
         foreach(ushort i; 0..4)
         {
             set.pop();
         }
         foreach(ushort i; 0..4)
-            set.add(GrammarSlot(i), InputPos(4), GssId(0));
+            set.add(cast(GrammarSlot) i, InputPos(4), GssId(0));
 
         foreach(i; 0 .. 4) assEq(set.pop().pos, 2);
         assEq(set.pop().pos, 4);
@@ -48,7 +55,7 @@ unittest
         PendingSet set = PendingSet(rl);
         assert(set.empty);
         foreach(ushort i; 0..10)
-            set.add(GrammarSlot(12), InputPos(12), GssId(12));
+            set.add(cast(GrammarSlot) 3, InputPos(12), GssId(12));
 
         assert(!set.empty);
         assEq(set.length, 1);

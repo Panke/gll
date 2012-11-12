@@ -16,6 +16,15 @@ struct InputPos
     alias _pos this;
 }
 
+
+// can be used to lookup a gssNode
+// 2^32 should be more than enough
+struct GssId { uint _id; alias _id this; }
+
+template Gll(alias Label)
+{
+
+alias Label GrammarSlot;
 struct GssLabel
 {
     this(GrammarSlot _slot, InputPos _pos)
@@ -41,12 +50,9 @@ struct Gss
         Array!GssId* parents;
     }
 
-    // can be used to lookup a gssNode
-    // 2^32 should be more than enough
-    struct GssId { uint _id; alias _id this; }
     alias GssId[const(GssLabel)] GssLookupTable;
 
-    enum L0 = GssLabel(GrammarSlot(0), InputPos(0));
+    enum L0 = GssLabel(cast(GrammarSlot)(0), InputPos(0));
 
     static Gss opCall()
     {
@@ -160,7 +166,7 @@ struct Gss
 
 struct Descriptor
 {
-    this(GrammarSlot _slot, InputPos _pos, Gss.GssId stackTop)
+    this(GrammarSlot _slot, InputPos _pos, GssId stackTop)
     {
         pos = _pos;
         top = stackTop;
@@ -168,7 +174,7 @@ struct Descriptor
     }
 
     InputPos pos;
-    Gss.GssId top;
+    GssId top;
     GrammarSlot slot;
 }
 
@@ -176,7 +182,7 @@ struct PendingSet
 {
 private:
     Array!Descriptor[] _R;
-    alias Tuple!(GrammarSlot, "slot", Gss.GssId, "stackTop") UElem;
+    alias Tuple!(GrammarSlot, "slot", GssId, "stackTop") UElem;
     bool[UElem][] _U;
     size_t ringLength;
     size_t curPos;
@@ -225,7 +231,7 @@ public:
         return _R[curPos].removeAny;
     }
 
-    void add(GrammarSlot slot, InputPos pos, Gss.GssId top)
+    void add(GrammarSlot slot, InputPos pos, GssId top)
     {
         add(Descriptor(slot, pos, top));
     }
@@ -244,8 +250,6 @@ public:
 
 class GllContext
 {
-    alias Gss.GssId GssId;
-
     Gss gss;
     PendingSet pending;
 
@@ -274,7 +278,7 @@ class GllContext
             add(gss[u].label.slot, pos, id);
     }
 }
-
+}
 /**
  * Simple and dump, dynamically growing vector class
  * that has value semantics and allocates from the gc heap.

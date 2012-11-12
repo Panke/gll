@@ -16,16 +16,11 @@ import util;
 enum IsTerminal : bool { yes = true, no = false }
 enum IsEpsilon : bool { yes = true, no = false }
 
-struct GrammarSlot
-{
-    ushort _pos;
-    alias _pos this;
-}
-
 struct Symbol {
     string name;
     IsTerminal isTerminal = IsTerminal.no;
     IsEpsilon isEpsilon = IsEpsilon.no;
+
 
     this(string name, IsTerminal term=IsTerminal.no, IsEpsilon eps=IsEpsilon.no)
     {

@@ -5,9 +5,12 @@ import std.stdio;
 import gll.data;
 import gll.grammar;
 
+
+enum TestLabel { A, B, C, D}
+alias Gll!TestLabel.Gss Gss;
+alias TestLabel GrammarSlot;
 unittest {
 
-    alias Gss.GssId GssId;
     testCase("Creation",
     {
         Gss gss = Gss();
@@ -18,13 +21,13 @@ unittest {
         Gss gss = Gss();
         foreach(ushort i; 1 .. 11)
         {
-            auto res = gss.create(GrammarSlot(i), InputPos(0), GssId(0));
+            auto res = gss.create(cast(GrammarSlot) i, InputPos(0), GssId(0));
             assNeq(res.id, 0);
         }
 
         foreach(ushort i; 1 .. 11)
         {
-            auto res = gss.create(GrammarSlot(1), InputPos(1), GssId(i));
+            auto res = gss.create(cast(GrammarSlot) 1, InputPos(1), GssId(i));
         }
 
         // pop and check if it has indeed 10 parents
@@ -35,12 +38,12 @@ unittest {
     testCase("check that create returns poppedAt positions correctly",
     {
         Gss gss = Gss();
-        auto res = gss.create(GrammarSlot(1), InputPos(1), GssId(0));
+        auto res = gss.create(cast(GrammarSlot) 1, InputPos(1), GssId(0));
 
         foreach(i; 0 .. 10)
             auto ret = gss.pop(res.id, InputPos(i));
 
-        res = gss.create(GrammarSlot(1), InputPos(1), GssId(0));
+        res = gss.create(cast(GrammarSlot) 1, InputPos(1), GssId(0));
         assEq(10, res.poppedAt.length);
     });
 
