@@ -44,7 +44,7 @@ unittest
 
     testCase("check multiple insertion of same element",
     {
-        enum rl = 4;
+        enum rl = 6;
         PendingSet set = PendingSet(rl);
         assert(set.empty);
         foreach(ushort i; 0..10)

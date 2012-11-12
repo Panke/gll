@@ -9,7 +9,7 @@ module gll.grammar;
 
 
 import  std.container, std.algorithm, std.range, std.array, std.stdio,
-        std.typecons, std.conv;
+        std.typecons, std.conv, std.format;
 
 import util;
 
@@ -48,6 +48,12 @@ struct Symbol {
         if(name > rhs.name)
             return 1;
         return 0;
+    }
+
+    const
+    hash_t toHash()
+    {
+        return typeid(name).getHash(&name);
     }
 }
 
@@ -113,14 +119,14 @@ struct Grammar
                  Set[const(Production)], "firstPlus") Sets;
 
     const
-    bool isLL1(Symbol nonterm, Sets sets = Sets())
+    bool isLL1(const Symbol nonterm, Sets sets = Sets())
     {
         if(sets.first !is null)
             sets = firstFallowSets;
 
         // productions for sym
         auto prods = productions.filter!(x => x.sym == nonterm);
-        foreach(pair; subsets!(typeof(prods), false)(prods, 2))
+        foreach(pair; subsets!(false)(prods, 2))
         {
             auto first = pair.front; pair.popFront;
             auto second = pair.front;
@@ -152,6 +158,7 @@ struct Grammar
         out(result) { assert(result !is null); }
     body
     {
+        stdout.flush();
         Set[Symbol] sets;
         // initialize sets
         foreach(sym; this.symbols)
@@ -393,10 +400,19 @@ unittest {
     auto fs = g.firstSets();
     assert(g.isLL1 == true);
     auto fsp = g.firstFallowSets;
+
+
+    // test util.subsets
+    const Production cprod = Production(S, [A, B, C]);
+    const Production cprod2 = prd5;
+
+    const(Production)[] prods = [cprod, cprod2];
+    foreach(pair; prods.subsets(2))
+        assert(pair.length == 2);
 }
 
 
-private void printSet(T)(Grammar.Set[T] sets)
+void printSet(T)(Grammar.Set[T] sets)
 {
     foreach(t; sets.byKey())
     {
@@ -409,3 +425,37 @@ private void printSet(T)(Grammar.Set[T] sets)
         writeln;
     }
 }
+
+void wDotItem(Sink)(Sink sink, in Production prod, size_t pos)
+{
+    formattedWrite(sink, "%s ⇒", prod.sym.name);
+    if(prod.rhs.length == 0)
+    {
+        formattedWrite(sink, " ε");
+        return;
+    }
+
+    foreach(i, sym; prod.rhs)
+    {
+        if(i == pos)
+            formattedWrite(sink, "% s%s", "•", sym.name);
+        else
+            formattedWrite(sink, " %s", sym.name);
+    }
+    if(pos == prod.rhs.length)
+        formattedWrite(sink, "•");
+}
+
+unittest
+{
+    immutable Symbol S = Symbol( "S" );
+    immutable Symbol A = Symbol( "A" );
+    immutable Symbol B = Symbol( "B" );
+    Production prod = Production(S, [S, A, B]);
+    auto app = appender!string();
+    wDotItem(app, prod, 0);
+    assert(equal(app.data,"S ⇒•S A B"));
+}
+
+
+

@@ -5,12 +5,13 @@
 import std.range, std.algorithm, std.stdio;
 
 
-auto subsets(Range, bool safe=true)(Range range, size_t size)
+auto subsets(bool safe=true, Range)(Range range, size_t size)
 {
     return _Subsets!(Range, safe)(range, size);
 }
 
-unittest {
+unittest
+{
     int[] arr = [1, 2, 3, 4];
     auto range = subsets(arr, 2);
 }
@@ -44,7 +45,13 @@ private struct _Subsets(Range, bool safe=true)
     auto front()
     {
         static if(safe)
-            return map!(x => x.front)(_indices).array;
+        {
+            // create array; DMD bug?
+            auto app = appender!(E[])();
+            foreach(e; map!(x => x.front)(_indices))
+                    app.put(e);
+            return app.data;
+        }
         else
             return map!(x => x.front)(_indices);
     }

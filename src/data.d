@@ -209,7 +209,7 @@ public:
     @property
     size_t length()
     {
-        return reduce!"a+b"(map!(r => r.length)(_R));
+        return reduce!"a+b"(map!((ref r) => r.length)(_R));
     }
 
     void dropFirst()
@@ -325,10 +325,12 @@ struct Array(T)
     }
 
     Range opSlice(size_t start, size_t end)
+    in
     {
-        debug assert(start > 0);
-        debug assert(start > 0);
-        debug assert(end <= _length);
+        assert(start > 0);
+        assert(start > 0);
+        assert(end <= _length);
+    } body {
         return Range(_data[start .. end]);
     }
 

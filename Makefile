@@ -9,7 +9,7 @@ DC ?= dmd
 commonflags = -Isubs
 testflags = -debug -unittest -g
 releaseflags = -release -O -inline -noboundscheck
-devflags = -debug -g -unittest
+devflags = -debug -g 
 
 .PHONY: test runtest release  dev
 
@@ -33,6 +33,10 @@ release: build/release
 build/release: $(gllsrc) $(main)
 	- mkdir build 2> /dev/null
 	${DC} $(commonflags) -ofbuild/gllgen -od/build $(releaseflags) $(FLAGS) $(gllsrc) $(main)
+
+stest: ${gllsrc} ${probatsrc} ${testmain}
+	- mkdir build 2> /dev/null
+	${DC} $(commonflags) $(testflags) ${FLAGS} ${gllsrc} ${testmain} ${probatsrc} tests/${T}.d -ofbuild/${T}
 
 clean:
 	rm -rf build
