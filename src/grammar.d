@@ -11,16 +11,19 @@ module gll.grammar;
 import  std.container, std.algorithm, std.range, std.array, std.stdio,
         std.typecons, std.conv, std.format;
 
-import util;
+import gll.util;
 
 enum IsTerminal : bool { yes = true, no = false }
 enum IsEpsilon : bool { yes = true, no = false }
 
+template Gram(TokenKind)
+{
+import gll.util;
 struct Symbol {
     string name;
     IsTerminal isTerminal = IsTerminal.no;
     IsEpsilon isEpsilon = IsEpsilon.no;
-
+    TokenKind kind;
 
     this(string name, IsTerminal term=IsTerminal.no, IsEpsilon eps=IsEpsilon.no)
     {
@@ -331,7 +334,8 @@ private:
         productions = newArr;
     }
 }
-
+}
+/++
 unittest {
 
     Symbol symA = Symbol("A");
@@ -396,7 +400,6 @@ unittest {
     assert(g.isLL1 == true);
     auto fsp = g.firstFallowSets;
 
-
     // test util.subsets
     const Production cprod = Production(S, [A, B, C]);
     const Production cprod2 = prd5;
@@ -405,9 +408,9 @@ unittest {
     foreach(pair; prods.subsets(2))
         assert(pair.length == 2);
 }
+++/
 
-
-void printSet(T)(Grammar.Set[T] sets)
+void printSet(U, T)(U[T] sets)
 {
     foreach(t; sets.byKey())
     {
@@ -421,7 +424,7 @@ void printSet(T)(Grammar.Set[T] sets)
     }
 }
 
-void wDotItem(Sink)(Sink sink, in Production prod, size_t pos)
+void wDotItem(Sink, Production)(Sink sink, in Production prod, size_t pos)
 {
     formattedWrite(sink, "%s ⇒", prod.sym.name);
     if(prod.rhs.length == 0)
@@ -440,7 +443,7 @@ void wDotItem(Sink)(Sink sink, in Production prod, size_t pos)
     if(pos == prod.rhs.length)
         formattedWrite(sink, "•");
 }
-
+/++
 unittest
 {
     immutable Symbol S = Symbol( "S" );
@@ -451,6 +454,6 @@ unittest
     wDotItem(app, prod, 0);
     assert(equal(app.data,"S ⇒•S A B"));
 }
-
+++/
 
 

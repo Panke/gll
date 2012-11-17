@@ -6,28 +6,31 @@ import std.algorithm, std.range, std.array, std.container, std.traits,
 
 import gll.grammar;
 
-struct Generator(Sink)
-    if(isOutputRange!(Sink, char))
+enum TokenKind {a, b, c};
+
+struct Generator(alias Gram)
 {
+    alias Gram.Grammar Grammar;
+    alias Gram.Symbol Symbol;
+    alias Gram.Production Production;
+    alias Gram.Epsilon Epsilon;
+
     const(Grammar)* gram;
-    Sink sink;
     size_t curIndent;
     alias Tuple!(string, "tag", int, "num") TagAndNum;
     alias Tuple!(const Production, "prod", ulong, "pos") DottedItem;
     TagAndNum[DottedItem] prodData;
 
-    this(const(Grammar)* gram_, Sink sink_)
+    this(const(Grammar)* gram_)
     {
         gram = gram_;
-        sink = sink_;
     }
 
-    void generateParser(Sink sink)
+    void generateParser(Sink)(Sink sink)
     {
-        this.sink = sink;
         precalc();
-        genGrammarSlotEnum();
-        genParserStruct();
+        genGrammarSlotEnum(sink);
+        genParserStruct(sink);
     }
 
     void precalc()
@@ -51,164 +54,165 @@ struct Generator(Sink)
     }
 
 
-    void genGrammarSlotEnum()
+    void genGrammarSlotEnum(Sink)(Sink sink)
     {
-        put("enum Label\n{\n");
+        sink.put("enum Label\n{\n");
         {
             mixin(indent(4));
             foreach(prod; gram.productions)
                 foreach(pos; 0 .. prod.rhs.length+1)
                 {
                     if(pos == 0)
-                        put(xformat("%s,\n", prodData[DottedItem(prod, pos)].tag));
+                        sink.put(xformat("%s,\n", prodData[DottedItem(prod, pos)].tag));
                     else if(pos != prod.rhs.length && !prod.rhs[pos].isTerminal)
-                        put(xformat("%s,\n", prodData[DottedItem(prod, pos)].tag));
+                        sink.put(xformat("%s,\n", prodData[DottedItem(prod, pos)].tag));
                     else if(pos == prod.rhs.length && !prod.rhs[pos-1].isTerminal)
-                        put(xformat("%s,\n", prodData[DottedItem(prod,pos)].tag));
+                        sink.put(xformat("%s,\n", prodData[DottedItem(prod,pos)].tag));
                 }
             foreach(sym; gram.nonterminals)
             {
-                put(xformat("_%s,\n", sym.name));
+                sink.put(xformat("_%s,\n", sym.name));
             }
         }
-        put("}\n");
+        sink.put("}\n");
     }
 
-    void genParserStruct()
+    void genParserStruct(Sink)(Sink sink)
     {
-        put(ParserStructStart);
+        sink.put(ParserStructStart);
         {mixin(indent(12));
         foreach(sym; gram.nonterminals)
         {
             mixin(indent(4));
-            genNonTerminalCase(sym);
+            genNonTerminalCase(sink, sym);
         }
         }
-        put(ParserStructEnd);
+        sink.put(ParserStructEnd);
     }
 
-    void genNonTerminalCase(Symbol sym)
+    void genNonTerminalCase(Sink)(Sink sink, Symbol sym)
     {
 
-        put(xformat("case %s:\n", "_"~sym.name));
+        sink.put(xformat("case %s:\n", "_"~sym.name));
         auto prods = filter!(x => x.sym == sym)(gram.productions);
         foreach(prod; prods)
         {
             mixin(indent(4));
-            put(xformat("if(test!(_%s, %s)(curIdx))\n",
+            sink.put(xformat("if(test!(_%s, %s)(curIdx))\n",
                 sym.name, prodData[DottedItem(prod, 0)].tag));
-            put(xformat("    context.add(%s, curIdx, curTop);\n",
+            sink.put(xformat("    context.add(%s, curIdx, curTop);\n",
                           prodData[DottedItem(prod, 0)].tag));
         }
-        put("    curLabel = Loop; break;\n");
+        sink.put("    curLabel = Loop; break;\n");
         foreach(prod; prods)
         {
-            genProductionCase(prod);
+            genProductionCase(sink, prod);
         }
     }
 
-    void genProductionCase(in Production prod)
+    void genProductionCase(Sink)(Sink sink, in Production prod)
     {
         if(prod.rhs.length == 1 && prod.rhs[0] == Epsilon)
-            genEpsilonProduction(prod);
+            genEpsilonProduction(sink, prod);
         else if(prod.rhs.length == 1 && prod.rhs[0].isTerminal)
-            genSingleTerminalProd(prod);
+            genSingleTerminalProd(sink, prod);
         else if(prod.rhs.length > 1 && prod.rhs[0].isTerminal)
-            genTerminalProduction(prod);
+            genTerminalProduction(sink, prod);
         else
         {
             assert(!prod.rhs[0].isTerminal);
-            genNonTerminalProduction(prod);
+            genNonTerminalProduction(sink, prod);
         }
     }
 
-    void genEpsilonProduction(in Production prod)
+    void genEpsilonProduction(Sink)(Sink sink, in Production prod)
     {
-        put(xformat("case %s:\n", prodData[DottedItem(prod, 0)].tag));
+        sink.put(xformat("case %s:\n", prodData[DottedItem(prod, 0)].tag));
         mixin(indent(4));
-        put("context.pop(curTop, curIdx);\ncurLabel = Loop; break;\n");
+        sink.put("context.pop(curTop, curIdx);\ncurLabel = Loop; break;\n");
     }
 
-    void genSingleTerminalProd(in Production prod)
+    void genSingleTerminalProd(Sink)(Sink sink, in Production prod)
     {
 
-        put(xformat("case %s:\n", prodData[DottedItem(prod, 0)].tag));
+        sink.put(xformat("case %s:\n", prodData[DottedItem(prod, 0)].tag));
         mixin(indent(4));
-        put("curIdx++;\n");
-        put("context.pop(curTop, curIdx);\ncurLabel = Loop; break;\n");
+        sink.put("curIdx++;\n");
+        sink.put("context.pop(curTop, curIdx);\ncurLabel = Loop; break;\n");
     }
 
-    void genTerminalProduction(in Production prod)
+    void genTerminalProduction(Sink)(Sink sink, in Production prod)
     {
-        put(xformat("case %s:\n", prodData[DottedItem(prod, 0)].tag));
-        put("    curIdx++;\n");
+        sink.put(xformat("case %s:\n", prodData[DottedItem(prod, 0)].tag));
+        sink.put("    curIdx++;\n");
         foreach(dottedItem; map!(x => DottedItem(prod, x))(iota(1, prod.rhs.length)))
         {
-            generateDottedItem(dottedItem);
+            generateDottedItem(sink, dottedItem);
         }
         mixin(indent(4));
-        put("context.pop(curTop, curIdx);\n");
-        put("curLabel = Loop; break;\n");
+        sink.put("context.pop(curTop, curIdx);\n");
+        sink.put("curLabel = Loop; break;\n");
     }
 
-    void generateDottedItem(DottedItem item)
+    void generateDottedItem(Sink)(Sink sink, DottedItem item)
     {
         auto front = item.prod.rhs[item.pos];
         if(front.isTerminal)
-            generateDottedItemTerminal(item, front);
+            generateDottedItemTerminal(sink, item, front);
         else
-            generateDottedItemNonTerminal(item, front);
+            generateDottedItemNonTerminal(sink, item, front);
     }
 
-    void generateDottedItemTerminal(DottedItem item, Symbol front)
+    void generateDottedItemTerminal(Sink)(Sink sink, DottedItem item, Symbol front)
     {
-        put(xformat("if(!input[curidx] == %s)\n{\n", front.name));
-        put("    curLabel = Loop; break;\n");
-        put("}\n");
-        put("curIdx++;\n");
+        sink.put(xformat("if(!input[curidx] == %s)\n{\n", front.name));
+        sink.put("    curLabel = Loop; break;\n");
+        sink.put("}\n");
+        sink.put("curIdx++;\n");
     }
 
-    void generateDottedItemNonTerminal(DottedItem item, Symbol front)
+    void generateDottedItemNonTerminal(Sink)(Sink sink, DottedItem item, Symbol front)
     {
         auto retItem = DottedItem(item.prod, item.pos+1);
         {
             mixin(indent(4));
-            put(xformat("if(test!(_%s, %s)(curIdx))\n{\n",
+            sink.put(xformat("if(test!(_%s, %s)(curIdx))\n{\n",
                         item.prod.sym.name, prodData[item].tag));
             { mixin(indent(4));
-                put(xformat("curTop = context.create(%s, curIdx, curTop);\n",
+                sink.put(xformat("curTop = context.create(%s, curIdx, curTop);\n",
                     prodData[retItem].tag));
-                put(xformat("curLabel = _%s; break;\n", item.prod.rhs[item.pos].name));
+                sink.put(xformat("curLabel = _%s; break;\n", item.prod.rhs[item.pos].name));
             }
-            put("}\nelse\n{\n");
-            put("    curLabel = Loop; break;\n}\n");
+            sink.put("}\nelse\n{\n");
+            sink.put("    curLabel = Loop; break;\n}\n");
         }
-        put(xformat("case %s:\n", prodData[retItem].tag));
+        sink.put(xformat("case %s:\n", prodData[retItem].tag));
     }
 
-    void genNonTerminalProduction(in Production prod)
+    void genNonTerminalProduction(Sink)(Sink sink, in Production prod)
     {
-        put(xformat("case %s:\n", prodData[DottedItem(prod, 0)].tag));
+        sink.put(xformat("case %s:\n", prodData[DottedItem(prod, 0)].tag));
         auto label = prodData[DottedItem(prod, 1)].tag;
         {
             mixin(indent(4));
-            put(xformat("curTop = context.create(%s, curIdx, curTop);\n",
+            sink.put(xformat("curTop = context.create(%s, curIdx, curTop);\n",
                         label));
-            put(xformat("curLabel = %s; break;\n", prod.sym.name));
+            sink.put(xformat("curLabel = %s; break;\n", prod.sym.name));
         }
-        put(xformat("case %s:\n", label));
+        sink.put(xformat("case %s:\n", label));
         foreach(item; map!(x => DottedItem(prod, x))(iota(1, prod.rhs.length)))
         {
-            generateDottedItem(item);
+            generateDottedItem(sink, item);
         }
         mixin(indent(4));
-        put("pop(curTop, curIdx);\n");
-        put("curLabel = Loop; break;\n");
+        sink.put("pop(curTop, curIdx);\n");
+        sink.put("curLabel = Loop; break;\n");
     }
 
     bool _needsIndent = false;
-    void put(Range)(Range range)
-        if(isForwardRange!(Range) && is(ElementType!Range : dchar))
+    void put(Sink, Range)(Sink sink, Range range)
+        if(isForwardRange!(Range) && is(ElementType!Range : dchar)
+            && isOutputRange!(Sink, dchar))
     {
         auto indentstring = std.range.repeat(' ', curIndent);
         while(!range.empty)
@@ -268,27 +272,30 @@ string ParserStructEnd = q"EOS
     }
 }
 EOS";
+
 unittest {
-    immutable Symbol A = Symbol( "A" );
-    immutable Symbol B = Symbol( "B" );
-    immutable Symbol C = Symbol( "C" );
-    immutable Symbol a = Symbol( "a", IsTerminal.yes );
-    immutable Symbol b = Symbol( "b", IsTerminal.yes );
-    immutable Symbol c = Symbol( "c", IsTerminal.yes );
+    enum Toks { a, b, c };
+    alias Gram!Toks G;
+    immutable G.Symbol A = G.Symbol( "A" );
+    immutable G.Symbol B = G.Symbol( "B" );
+    immutable G.Symbol C = G.Symbol( "C" );
+    immutable G.Symbol a = G.Symbol( "a", IsTerminal.yes );
+    immutable G.Symbol b = G.Symbol( "b", IsTerminal.yes );
+    immutable G.Symbol c = G.Symbol( "c", IsTerminal.yes );
 
-    Production prd5 = Production( C, [A, B, C] );
-    Production prd3 = Production( B, [b] );
-    Production prd1 = Production( A, [ a ] );
-    Production prd2 = Production( B, [B, A ]);
-    Production prd4 = Production( B, [Epsilon] );
-    Production prd6 = Production( A, [Epsilon] );
-    Production prd7 = Production( C, [ c ] );
+    G.Production prd5 = G.Production( C, [A, B, C] );
+    G.Production prd3 = G.Production( B, [b] );
+    G.Production prd1 = G.Production( A, [ a ] );
+    G.Production prd2 = G.Production( B, [B, A ]);
+    G.Production prd4 = G.Production( B, [G.Epsilon] );
+    G.Production prd6 = G.Production( A, [G.Epsilon] );
+    G.Production prd7 = G.Production( C, [ c ] );
 
-    Grammar g = Grammar(C, []);
+    G.Grammar g = G.Grammar(C, []);
     g.addProductions([prd1, prd2, prd3, prd4, prd5, prd6, prd7]);
 
     auto app = appender!(string)();
-    auto gen = Generator!(typeof(app))(&g, app);
+    auto gen = Generator!G(&g);
     gen.generateParser(app);
     writeln(app.data);
 }

@@ -1,3 +1,5 @@
+module gll.util;
+
 /**
  * helper functions for gll.d
  */

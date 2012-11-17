@@ -4,7 +4,7 @@ std.functional, std.stdio, std.file, std.format;
 import probat.all;
 
 import gll.grammar;
-
+/++
 immutable S = Symbol("S");
 immutable E = Symbol("E");
 immutable T = Symbol("T");
@@ -67,3 +67,4 @@ unittest {
         assEq(sets.first[E].length, 1);
     });
 }
+++/

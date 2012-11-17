@@ -1,6 +1,6 @@
 probatsrc = subs/probat/*.d
 # sadly the order matters
-gllsrc = src/grammar.d src/gll.d src/data.d src/util.d
+gllsrc = src/gll.d src/grammar.d  src/data.d src/util.d
 testsrc = tests/*d
 main = src/main.d
 testmain = tests/testmain.d
