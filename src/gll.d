@@ -255,10 +255,6 @@ struct Parser
         GssId curTop;
         Tags curLabel = Loop;
         with(Tags) {
-        if(input[0] == "n" || input.length == 0)
-            curLabel = _S;
-        else
-            throw new Exception("Näääh");
 
         while(true)
         {
