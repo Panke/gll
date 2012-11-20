@@ -2,7 +2,7 @@ module gll.gll;
 
 import std.algorithm, std.range, std.array, std.container, std.traits,
        std.functional, std.stdio, std.file, std.format, std.conv, std.string,
-       std.typecons;
+       std.typecons, std.traits;
 
 import gll.grammar;
 
@@ -14,6 +14,7 @@ struct Generator(alias Gram)
     alias Gram.Symbol Symbol;
     alias Gram.Production Production;
     alias Gram.Epsilon Epsilon;
+    alias Gram.TokenKind TokenKind;
 
     const(Grammar)* gram;
     size_t curIndent;
@@ -35,6 +36,7 @@ struct Generator(alias Gram)
 
     void precalc()
     {
+//         sets = gram.firstFallowSets;
         int num = 1;
         foreach(prod; gram.productions)
             foreach(pos; 0 .. prod.rhs.length+1)
@@ -80,14 +82,17 @@ struct Generator(alias Gram)
     void genParserStruct(Sink)(Sink sink)
     {
         sink.put(ParserStructStart);
-        {mixin(indent(12));
-        foreach(sym; gram.nonterminals)
         {
-            mixin(indent(4));
-            genNonTerminalCase(sink, sym);
+            mixin(indent(12));
+            foreach(sym; gram.nonterminals)
+            {
+                mixin(indent(4));
+                genNonTerminalCase(sink, sym);
+            }
         }
-        }
-        sink.put(ParserStructEnd);
+        sink.put(ParserWhileEnd);
+            genTestFunctions(sink);
+        sink.put("}}");
     }
 
     void genNonTerminalCase(Sink)(Sink sink, Symbol sym)
@@ -165,7 +170,7 @@ struct Generator(alias Gram)
 
     void generateDottedItemTerminal(Sink)(Sink sink, DottedItem item, Symbol front)
     {
-        sink.put(xformat("if(!input[curidx] == %s)\n{\n", front.name));
+        sink.put(xformat("if(!input[curidx] == %s)\n{\n", front.kind));
         sink.put("    curLabel = Loop; break;\n");
         sink.put("}\n");
         sink.put("curIdx++;\n");
@@ -207,6 +212,46 @@ struct Generator(alias Gram)
         mixin(indent(4));
         sink.put("pop(curTop, curIdx);\n");
         sink.put("curLabel = Loop; break;\n");
+    }
+
+
+    void genTestFunctions(Sink)(Sink sink)
+    {
+        Grammar.Sets sets = gram.firstFallowSets;
+        foreach(prod; gram.productions)
+        {
+            foreach(idx; 1 .. prod.rhs.length)
+            {
+                genTestFunction(sink, prod, idx, sets);
+            }
+        }
+    }
+
+    void genTestFunction(Sink)(Sink sink, in Production prod, size_t idx,
+                                Grammar.Sets sets)
+    {
+        pragma(msg, typeof(prod.sym.kind));
+        sink.put(xformat("void test(Tags A, Tags B)(size_t idx)\n"));
+        {
+            mixin(indent(4));
+             sink.put(xformat("if(A == %s && B == %s)\n",
+                              "_"~prod.sym.name,
+                              prodData[DottedItem(prod, idx)].tag));
+        }
+        sink.put("{\n");
+        {
+            mixin(indent(4));
+            sink.put("return (\n false ");
+            enum enumName = fullyQualifiedName!(typeof(prod.sym.kind));
+            foreach(elem; sets.firstPlus[prod])
+            {
+                sink.put(xformat("|| \n input[idx] == %s.%s ",
+                                 enumName,
+                                 elem.kind));
+            }
+            sink.put(");\n");
+        }
+        sink.put("}\n");
     }
 
     bool _needsIndent = false;
@@ -262,36 +307,8 @@ struct Parser
             {
 EOS";
 
-string ParserStructEnd = q"EOS
+string ParserWhileEnd= q"EOS
             }
         }
     }
-}
 EOS";
-
-unittest {
-    enum Toks { a, b, c };
-    alias Gram!Toks G;
-    immutable G.Symbol A = G.Symbol( "A" );
-    immutable G.Symbol B = G.Symbol( "B" );
-    immutable G.Symbol C = G.Symbol( "C" );
-    immutable G.Symbol a = G.Symbol( "a", IsTerminal.yes );
-    immutable G.Symbol b = G.Symbol( "b", IsTerminal.yes );
-    immutable G.Symbol c = G.Symbol( "c", IsTerminal.yes );
-
-    G.Production prd5 = G.Production( C, [A, B, C] );
-    G.Production prd3 = G.Production( B, [b] );
-    G.Production prd1 = G.Production( A, [ a ] );
-    G.Production prd2 = G.Production( B, [B, A ]);
-    G.Production prd4 = G.Production( B, [G.Epsilon] );
-    G.Production prd6 = G.Production( A, [G.Epsilon] );
-    G.Production prd7 = G.Production( C, [ c ] );
-
-    G.Grammar g = G.Grammar(C, []);
-    g.addProductions([prd1, prd2, prd3, prd4, prd5, prd6, prd7]);
-
-    auto app = appender!(string)();
-    auto gen = Generator!G(&g);
-    gen.generateParser(app);
-    writeln(app.data);
-}

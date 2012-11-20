@@ -16,20 +16,28 @@ import gll.util;
 enum IsTerminal : bool { yes = true, no = false }
 enum IsEpsilon : bool { yes = true, no = false }
 
-template Gram(TokenKind)
+template Gram(TK)
 {
 import gll.util;
+alias TK TokenKind;
 struct Symbol {
     string name;
     IsTerminal isTerminal = IsTerminal.no;
     IsEpsilon isEpsilon = IsEpsilon.no;
     TokenKind kind;
 
-    this(string name, IsTerminal term=IsTerminal.no, IsEpsilon eps=IsEpsilon.no)
+    this(string name, IsEpsilon eps=IsEpsilon.no)
     {
         this.name=name;
-        this.isTerminal=term;
-        this.isEpsilon=eps;
+        this.isTerminal = eps ? IsTerminal.yes : IsTerminal.no;
+        this.isEpsilon = eps;
+    }
+
+    this(string name, TokenKind tok)
+    {
+        this.name = name;
+        this.kind = tok;
+        isTerminal = IsTerminal.yes;
     }
 
     const
@@ -55,8 +63,8 @@ struct Symbol {
     }
 }
 
-enum Epsilon = Symbol("ε", IsTerminal.yes, IsEpsilon.yes);
-enum EOF = Symbol("$", IsTerminal.yes, IsEpsilon.no);
+enum Epsilon = Symbol("ε",  IsEpsilon.yes);
+enum EOF = Symbol("$", TokenKind.Eof);
 
 bool NoEpsilon(Symbol sym) { return !sym.isEpsilon; }
 
@@ -277,7 +285,11 @@ struct Grammar
             }
 
             if(Epsilon in tmp)
+            {
                 tmp.insert(follow[prod.sym][]);
+                tmp.removeKey(Epsilon);
+            }
+
 
             firstPlus[prod] = tmp;
         }
