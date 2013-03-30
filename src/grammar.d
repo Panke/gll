@@ -40,14 +40,14 @@ struct Symbol {
         isTerminal = IsTerminal.yes;
     }
 
-    const
-    bool opEquals(ref const(Symbol) rhs)
+    
+    bool opEquals(ref Symbol rhs)
     {
         return name == rhs.name;
     }
 
-    const
-    int opCmp(ref const(Symbol) rhs)
+    
+    int opCmp(ref Symbol rhs)
     {
         if(name < rhs.name)
             return -1;
@@ -56,7 +56,7 @@ struct Symbol {
         return 0;
     }
 
-    const
+    
     hash_t toHash()
     {
         return typeid(name).getHash(&name);
@@ -75,8 +75,8 @@ struct Production
 
     this(Symbol sym, Symbol[] rhs) { this.sym = sym; this.rhs=rhs; }
 
-    const
-    int opCmp(ref const(Production) op)
+    
+    int opCmp(ref Production op)
     {
         int symCmp;
         symCmp = sym < op.sym ? -1 : symCmp;
@@ -88,13 +88,13 @@ struct Production
             return symCmp;
     }
 
-    const
-    bool opEquals(ref const(Production) rhs)
+    
+    bool opEquals(ref Production rhs)
     {
         return sym == rhs.sym && this.rhs == rhs.rhs;
     }
 
-    const
+    
     string toString()
     {
         return sym.name ~ " --> " ~ to!string(joiner(map!(x => x.name.dup)(rhs), " "));
@@ -122,10 +122,10 @@ struct Grammar
 
     alias RedBlackTree!Symbol Set;
     alias Tuple!(Set[Symbol], "first", Set[Symbol], "follow",
-                 Set[const(Production)], "firstPlus") Sets;
+                 Set[Production], "firstPlus") Sets;
 
-    const
-    bool isLL1(const Symbol nonterm, Sets sets = Sets())
+    
+    bool isLL1( Symbol nonterm, Sets sets = Sets())
     {
         if(sets.first !is null)
             sets = firstFallowSets;
@@ -142,7 +142,7 @@ struct Grammar
         return true;
     }
 
-    const
+    
     bool isLL1(Sets sets = Sets.init)
     {
         auto ffSets = sets == Sets.init ? firstFallowSets : sets;
@@ -150,8 +150,8 @@ struct Grammar
         return ! m.canFind(false);
     }
 
-    const
-    bool ambigious(Sets sets, in Production lhs, in Production rhs)
+    
+    bool ambigious(Sets sets, Production lhs, Production rhs)
     {
         auto lhsFsp = sets.firstPlus[lhs];
         auto rhsFsp = sets.firstPlus[rhs];
@@ -159,7 +159,7 @@ struct Grammar
     }
 
 
-    const
+    
     Set[Symbol] firstSets()
         out(result) { assert(result !is null); }
     body
@@ -217,7 +217,7 @@ struct Grammar
         return sets;
     }
 
-    const @property
+     @property
     Set[Symbol] followSets(Set[Symbol] _first = null)
         out(result) { assert(result !is null); }
     body
@@ -261,14 +261,14 @@ struct Grammar
         return follow;
     }
 
-    const @property
+     @property
     Sets firstFallowSets(Set[Symbol] _first = null, Set[Symbol] _follow = null)
         out(result) { assert(result.first !is null); }
     body
     {
         Set[Symbol] first = _first is null ? firstSets : _first;
         Set[Symbol] follow = _follow is null ? followSets(_first) : _follow;
-        Set[const(Production)] firstPlus;
+        Set[Production] firstPlus;
         foreach(prod; productions)
         {
             Set tmp = make!Set();
@@ -310,21 +310,21 @@ struct Grammar
         sort(productions);
     }
 
-    const @property
+     @property
     auto nonterminals()
     {
         return productions.map!((a) => a.sym).uniq;
     }
 
-    const @property
+     @property
     auto terminals()
     {
-        // need cast because of const issues
-        Symbol[] tmp = cast(Symbol[]) productions.map!((a) => a.rhs[0..$]).joiner.array;
+        // need cast because of  issues
+        Symbol[] tmp = cast(Symbol[])productions.map!(( a) => a.rhs[0..$]).joiner.array;
         return sort(tmp).uniq;
     }
 
-    const @property
+     @property
     auto symbols()
     {
         return chain(terminals, nonterminals);
@@ -413,10 +413,10 @@ unittest {
     auto fsp = g.firstFallowSets;
 
     // test util.subsets
-    const Production cprod = Production(S, [A, B, C]);
-    const Production cprod2 = prd5;
+     Production cprod = Production(S, [A, B, C]);
+     Production cprod2 = prd5;
 
-    const(Production)[] prods = [cprod, cprod2];
+    (Production)[] prods = [cprod, cprod2];
     foreach(pair; prods.subsets(2))
         assert(pair.length == 2);
 }
@@ -436,7 +436,7 @@ void printSet(U, T)(U[T] sets)
     }
 }
 
-void wDotItem(Sink, Production)(Sink sink, in Production prod, size_t pos)
+void wDotItem(Sink, Production)(Sink sink, Production prod, size_t pos)
 {
     formattedWrite(sink, "%s ⇒", prod.sym.name);
     if(prod.rhs.length == 0)
@@ -455,6 +455,7 @@ void wDotItem(Sink, Production)(Sink sink, in Production prod, size_t pos)
     if(pos == prod.rhs.length)
         formattedWrite(sink, "•");
 }
+
 /++
 unittest
 {

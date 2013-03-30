@@ -323,9 +323,9 @@ struct Array(T)
         _length = newLength;
     }
 
-    Range opSlice()
+    auto opSlice()
     {
-        return Range(_data[0 .. _length]);
+        return (_data[0 .. _length]);
     }
 
     Range opSlice(size_t start, size_t end)
