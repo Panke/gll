@@ -6,7 +6,7 @@ std.functional, std.stdio, std.file, std.format, std.conv, std.typetuple, std.ty
 
 unittest {
 
-    enum Toks { Eof, a, b, c };
+    enum Toks { Eof, a, b, c }
     //mixin Gram!Toks;
 //     immutable G.Symbol A = G.Symbol( "A" );
 //     immutable G.Symbol B = G.Symbol( "B" );
