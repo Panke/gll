@@ -7,106 +7,19 @@ module gll.grammar;
  *               * ...
  */
 
+import std.algorithm, std.range, std.array, std.stdio,
+       std.typecons, std.conv, std.format, std.traits,
+       std.typetuple;
+       
+import org.panke.container.set : HashSet;
+import org.panke.meta.meta;
+import gll.util;
 
 enum IsTerminal : bool { yes = true, no = false }
 enum IsEpsilon : bool { yes = true, no = false }
 
-template Gram(TK)
-{
-import std.algorithm, std.range, std.array, std.stdio,
-       std.typecons, std.conv, std.format;
-import org.panke.container.set : HashSet;
-import gll.util;
-alias TK TokenKind;
-struct Symbol {
-    string name;
-    IsTerminal isTerminal = IsTerminal.no;
-    IsEpsilon isEpsilon = IsEpsilon.no;
-    TokenKind kind;
 
-    this(string name, IsEpsilon eps=IsEpsilon.no)
-    {
-        this.name=name;
-        this.isTerminal = eps ? IsTerminal.yes : IsTerminal.no;
-        this.isEpsilon = eps;
-    }
-
-    this(string name, TokenKind tok)
-    {
-        this.name = name;
-        this.kind = tok;
-        isTerminal = IsTerminal.yes;
-    }
-
-    
-    bool opEquals(ref Symbol rhs)
-    {
-        return name == rhs.name;
-    }
-
-    
-    int opCmp(ref Symbol rhs)
-    {
-        if(name < rhs.name)
-            return -1;
-        if(name > rhs.name)
-            return 1;
-        return 0;
-    }
-
-    
-    hash_t toHash()
-    {
-        return typeid(name).getHash(&name);
-    }
-}
-
-enum Epsilon = Symbol("ε",  IsEpsilon.yes);
-enum EOF = Symbol("$", TokenKind.Eof);
-
-bool NoEpsilon(Symbol sym) { return !sym.isEpsilon; }
-
-struct Production
-{
-    Symbol sym;
-    Symbol[] rhs;
-
-    this(Symbol sym, Symbol[] rhs) { this.sym = sym; this.rhs=rhs; }
-
-    
-    int opCmp(ref Production op)
-    {
-        int symCmp;
-        symCmp = sym < op.sym ? -1 : symCmp;
-        symCmp = sym > op.sym ? 1 : symCmp;
-
-        if(symCmp == 0)
-            return this.rhs < op.rhs ? -1 : (this.rhs > op.rhs);
-        else
-            return symCmp;
-    }
-
-    
-    bool opEquals(ref Production rhs)
-    {
-        return sym == rhs.sym && this.rhs == rhs.rhs;
-    }
-
-    
-    string toString()
-    {
-        return sym.name ~ " --> " ~ to!string(joiner(map!(x => x.name.dup)(rhs), " "));
-    }
-}
-
-unittest {
-    Production a, b;
-    assert(is(typeof(a < b)));
-    assert(is(typeof(a > b)));
-    assert(is(typeof(a == b)));
-}
-
-struct Grammar
+struct Grammar(TK)
 {
     Symbol startSymbol;
     Production[] productions;
@@ -119,15 +32,14 @@ struct Grammar
     }
 
     alias HashSet!Symbol Set;
-    alias Tuple!(Set[Symbol], "first", Set[Symbol], "follow",
-                 Set[Production], "firstPlus") Sets;
-
+    alias Tuple!(Set*[Symbol], "first", Set*[Symbol], "follow",
+                 Set*[Production], "firstPlus") Sets;
     
-    bool isLL1( Symbol nonterm, Sets sets = Sets())
+    bool isLL1( Symbol nonterm, Sets sets = Sets.init)
     {
-        if(sets.first !is null)
-            sets = firstFallowSets;
-
+        if(sets.first is null)
+            sets = firstFallowSets();
+        
         // productions for sym
         auto prods = productions.filter!(x => x.sym == nonterm);
         foreach(pair; subsets!(false)(prods, 2))
@@ -153,21 +65,20 @@ struct Grammar
     {
         auto lhsFsp = sets.firstPlus[lhs];
         auto rhsFsp = sets.firstPlus[rhs];
-        return setIntersection(lhsFsp[], rhsFsp[]).walkLength > 0;
+        return setIntersection((*lhsFsp)[], (*rhsFsp)[]).walkLength > 0;
     }
 
 
     
-    Set[Symbol] firstSets()
+    Set*[Symbol] firstSets()
         out(result) { assert(result !is null); }
     body
     {
-        stdout.flush();
-        Set[Symbol] sets;
+        Set*[Symbol] sets;
         // initialize sets
         foreach(sym; this.symbols)
         {
-            HashSet!Symbol set;
+            auto set = new Set;
             if( sym.isTerminal )
                 set.insert(sym);
             
@@ -187,9 +98,9 @@ struct Grammar
                 foreach(i, part; rhs)
                 {
                     auto firstSetPart = sets[part];
-                    if(Epsilon in firstSetPart)
+                    if(Epsilon in *firstSetPart)
                     {
-                        fS.insert(firstSetPart[].filter!(NoEpsilon));
+                        fS.insert((*firstSetPart)[].filter!(NoEpsilon));
                         // if it's the last item and it derives the empty string,
                         // add the empty string
                         if(i == rhs.length-1)
@@ -197,7 +108,7 @@ struct Grammar
                     }
                     else
                     {
-                        fS.insert(firstSetPart[]);
+                        fS.insert((*firstSetPart)[]);
                         // break at first symbol that does not
                         // derive the empty string
                         break;
@@ -211,14 +122,17 @@ struct Grammar
     }
 
      
-    Set[Symbol] followSets(Set[Symbol] _first = null)
+    Set*[Symbol] followSets(Set*[Symbol] _first = null)
         out(result) { assert(result !is null); }
     body
     {
-        Set[Symbol] follow;
-        Set[Symbol] first = _first is null ? this.firstSets : _first;
+        Set*[Symbol] follow;
+        foreach(sym; symbols)
+            follow[sym] = new Set;
+
+        Set*[Symbol] first = _first is null ? this.firstSets() : _first;
         
-        follow[startSymbol].insert(EOF);
+        follow[startSymbol].insert(Eof);
         bool changes;
         do {
             changes = false;
@@ -234,8 +148,8 @@ struct Grammar
                         continue;
                     }
 
-                    follow[part].insert(trailer[]);
-                    trailer.insert(first[part][].filter!(NoEpsilon));
+                    follow[part].insert((*trailer)[]);
+                    trailer.insert((*first[part])[].filter!(NoEpsilon));
 
                     if(follow[part].length > count)
                         changes = true;
@@ -246,21 +160,21 @@ struct Grammar
         return follow;
     }
 
-    Sets firstFallowSets(Set[Symbol] _first = null, Set[Symbol] _follow = null)
+    Sets firstFallowSets(Set*[Symbol] _first = null, Set*[Symbol] _follow = null)
         out(result) { assert(result.first !is null); }
     body
     {
-        Set[Symbol] first = _first is null ? firstSets : _first;
-        Set[Symbol] follow = _follow is null ? followSets(_first) : _follow;
-        Set[Production] firstPlus;
+        Set*[Symbol] first = _first is null ? firstSets() : _first;
+        Set*[Symbol] follow = _follow is null ? followSets(_first) : _follow;
+        Set*[Production] firstPlus;
         foreach(prod; productions)
         {
-            Set tmp;
+            Set* tmp = new Set;
             foreach(i, sym; prod.rhs)
             {
-                tmp.insert(first[sym][].filter!NoEpsilon);
+                tmp.insert((*first[sym])[].filter!NoEpsilon);
                 // last item contains epsilon
-                if(Epsilon in first[sym])
+                if(Epsilon in (*first[sym]))
                 {
                     if(i == prod.rhs.length - 1)
                         tmp.insert(Epsilon);
@@ -268,9 +182,9 @@ struct Grammar
                 else break;
             }
 
-            if(Epsilon in tmp)
+            if(Epsilon in *tmp)
             {
-                tmp.insert(follow[prod.sym][]);
+                tmp.insert((*follow[prod.sym])[]);
                 tmp.remove(Epsilon);
             }
 
@@ -324,87 +238,105 @@ struct Grammar
     }
 
 private:
+    
     void removeDuplicates()
     {
         Production[] newArr = productions.uniq.array;
         productions = newArr;
     }
+    
+public:
+    
+    struct Symbol 
+    {
+        static string toString(TK k) { return to!string(k); }
+        string name;
+        IsTerminal isTerminal = IsTerminal.no;
+        IsEpsilon isEpsilon = IsEpsilon.no;
+        TK kind;
+        private debug auto _TKNames = Array!(string, Map!(toString, EnumMembers!TK));
+        // generally used to define non-terminal symbols.
+        // name must be different from every element of TK
+        this(string name, IsEpsilon eps=IsEpsilon.no)
+        in
+        {
+            debug assert(!_TKNames.canFind(name));
+        }
+        body
+        {
+            this.name=name;
+            this.isTerminal = eps ? IsTerminal.yes : IsTerminal.no;
+            this.isEpsilon = eps;
+        }
+        
+        this(TK kind)
+        {
+            this.name = to!string(kind);
+            this.isTerminal = IsTerminal.yes;
+            this.isEpsilon = IsEpsilon.no;
+            this.kind = kind;
+        }
+        
+        bool opEquals(ref Symbol rhs)
+        {
+            return name == rhs.name;
+        }
+
+        int opCmp(ref Symbol rhs)
+        {
+            if(name < rhs.name)
+                return -1;
+            if(name > rhs.name)
+                return 1;
+            return 0;
+        }
+
+        hash_t toHash()
+        {
+            return typeid(name).getHash(&name);
+        }
+    }
+
+    enum Epsilon = Symbol("ε",  IsEpsilon.yes);
+    enum Eof = Symbol(TK.Eof);
+
+    static bool NoEpsilon(Symbol sym) { return !sym.isEpsilon; }
+
+    struct Production
+    {
+        Symbol sym;
+        Symbol[] rhs;
+
+        this(Symbol sym, Symbol[] rhs)
+            in { assert(!sym.isTerminal); }
+        body
+        { 
+            this.sym = sym; this.rhs=rhs; 
+        }
+
+        int opCmp(ref Production op)
+        {
+            int symCmp;
+            symCmp = sym < op.sym ? -1 : symCmp;
+            symCmp = sym > op.sym ? 1 : symCmp;
+
+            if(symCmp == 0)
+                return this.rhs < op.rhs ? -1 : (this.rhs > op.rhs);
+            else
+                return symCmp;
+        }
+
+        bool opEquals(ref Production rhs)
+        {
+            return sym == rhs.sym && this.rhs == rhs.rhs;
+        }
+        
+        string toString()
+        {
+            return sym.name ~ " --> " ~ to!string(joiner(map!(x => x.name.dup)(rhs), " "));
+        }
+    }
 }
-}
-/++
-unittest {
-
-    Symbol symA = Symbol("A");
-    Symbol symB = Symbol("B");
-    Production p1 = Production(symA, [symB, symB]);
-    Grammar g = Grammar(symA, [p1, p1]);
-    g.normalize;
-    assert(g.productions.length == 1);
-}
-
-unittest {
-    immutable Symbol A = Symbol( "A" );
-    immutable Symbol B = Symbol( "B" );
-    immutable Symbol C = Symbol( "C" );
-    immutable Symbol a = Symbol( "a", IsTerminal.yes );
-    immutable Symbol b = Symbol( "b", IsTerminal.yes );
-    immutable Symbol c = Symbol( "c", IsTerminal.yes );
-
-    Production prd5 = Production( C, [A, B, C] );
-    Production prd3 = Production( B, [b] );
-    Production prd1 = Production( A, [ a ] );
-    Production prd2 = Production( B, [B, A ]);
-    Production prd4 = Production( B, [Epsilon] );
-    Production prd6 = Production( A, [Epsilon] );
-    Production prd7 = Production( C, [ c ] );
-
-    Grammar g = Grammar(C, []);
-    g.addProductions([prd1, prd2, prd3, prd4, prd5, prd6, prd7]);
-
-    auto fs = g.firstSets();
-    assert(equal(fs[A][],[Epsilon, a]));
-    assert(equal(fs[B][],[Epsilon, a, b]));
-    assert(equal(fs[C][],[a, b, c]));
-    auto fls = g.followSets();
-    assert(equal(fls[C][], [EOF]));
-    assert(fls[A].length == fls[B].length);
-    assert(fls[A].length == 4);
-    assert(g.isLL1 == false);
-}
-
-
-unittest {
-    immutable Symbol S = Symbol( "S" );
-    immutable Symbol A = Symbol( "A" );
-    immutable Symbol B = Symbol( "B" );
-    immutable Symbol C = Symbol( "C" );
-    immutable Symbol a = Symbol( "a", IsTerminal.yes );
-    immutable Symbol b = Symbol( "b", IsTerminal.yes );
-    immutable Symbol c = Symbol( "c", IsTerminal.yes );
-
-    Production prd1 = Production( S, [A, B, C] );
-    Production prd2 = Production( B, [b] );
-    Production prd3 = Production( A, [ a ] );
-    Production prd4 = Production( A, [ b, C ] );
-    Production prd5 = Production( A, [ C, C, C ] );
-    Production prd6 = Production( C, [ c ] );
-
-    Grammar g = Grammar(A, []);
-    g.addProductions([prd1, prd2, prd3, prd4, prd5, prd6]);
-
-    auto fs = g.firstSets();
-    assert(g.isLL1 == true);
-    auto fsp = g.firstFallowSets;
-
-    // test util.subsets
-     Production cprod = Production(S, [A, B, C]);
-     Production cprod2 = prd5;
-
-    (Production)[] prods = [cprod, cprod2];
-    foreach(pair; prods.subsets(2))
-        assert(pair.length == 2);
-}
-++/
 
 void printSet(U, T)(U[T] sets)
 {
@@ -440,17 +372,5 @@ void wDotItem(Sink, Production)(Sink sink, Production prod, size_t pos)
         formattedWrite(sink, "•");
 }
 
-/++
-unittest
-{
-    immutable Symbol S = Symbol( "S" );
-    immutable Symbol A = Symbol( "A" );
-    immutable Symbol B = Symbol( "B" );
-    Production prod = Production(S, [S, A, B]);
-    auto app = appender!string();
-    wDotItem(app, prod, 0);
-    assert(equal(app.data,"S ⇒•S A B"));
-}
-++/
 
 

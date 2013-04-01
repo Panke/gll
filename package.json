@@ -6,6 +6,7 @@
     "dependencies" : {
         "probat": ">=0.1.0 <=0.2.0",
         "container": ">=0.1.0 <=0.2.0",
+        "meta": ">=0.1.0 <=0.2.0",
     },
     "configurations" : [
         {
