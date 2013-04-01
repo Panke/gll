@@ -1,6 +1,6 @@
 module gll.gll;
 
-import std.algorithm, std.range, std.array, std.container, std.traits,
+import std.algorithm, std.range, std.array, std.traits,
        std.functional, std.stdio, std.file, std.format, std.conv, std.string,
        std.typecons, std.traits;
 

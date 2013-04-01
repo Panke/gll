@@ -3,6 +3,9 @@ module gll.data;
 import  std.range, std.algorithm, std.array, std.stdio, std.typecons,
        std.format, std.exception;
 
+import org.panke.container.array;
+import org.panke.container.set;
+
 /*
  * This module implements the GSS and SPPF needed in every gll parser,
  * as well as the sets U_i
@@ -183,7 +186,7 @@ struct PendingSet
 private:
     Array!Descriptor[] _R;
     alias Tuple!(GrammarSlot, "slot", GssId, "stackTop") UElem;
-    bool[UElem][] _U;
+    HashSet!UElem[] _U;
     size_t ringLength;
     size_t curPos;
 
@@ -243,7 +246,7 @@ public:
         if((elem in _U[idx]))
             return;
 
-        _U[idx][elem] = true;
+        _U[idx].insert(elem);
         _R[idx].insertBack(desc);
     }
 }
@@ -278,89 +281,5 @@ class GllContext
             add(gss[u].label.slot, pos, id);
     }
 }
-}
-/**
- * Simple and dump, dynamically growing vector class
- * that has value semantics and allocates from the gc heap.
- *
- * Used because std.container gives me headaches.
- */
-
-
-struct Array(T)
-{
-    this(this)
-    {
-        debug writeln("array dupped");
-        _data = _data.dup;
-    }
-
-    void insertBack(U)(U elem)
-        if(is(U : T))
-    {
-        if(_data.length == _length)
-            resize();
-        assert(_data.length > _length);
-        _data[_length] = elem;
-        ++_length;
-    }
-
-    ref T opIndex(size_t idx)
-    {
-        debug assert(idx < _length);
-        return _data[idx];
-    }
-
-    @property
-    size_t length() { return _length; }
-
-    @property
-    void length(size_t newLength)
-    {
-        debug assert(newLength >= 0);
-        if(newLength > _length)
-            resize(newLength);
-        _length = newLength;
-    }
-
-    auto opSlice()
-    {
-        return (_data[0 .. _length]);
-    }
-
-    Range opSlice(size_t start, size_t end)
-    in
-    {
-        assert(start > 0);
-        assert(start > 0);
-        assert(end <= _length);
-    } body {
-        return Range(_data[start .. end]);
-    }
-
-    T removeAny()
-    {
-        debug assert(_length > 0);
-        _length--;
-        return _data[_length];
-    }
-
-private:
-    void resize(size_t cap = 0 )
-    {
-        if(cap > _data.length)
-            _data.length = cap;
-        else
-            _data.length = cast(size_t) ((_data.length+128) * 1.5);
-    }
-
-    T[] _data;
-    size_t _length;
-
-    struct Range
-    {
-        T[] slice;
-        alias slice this;
-    }
 }
 

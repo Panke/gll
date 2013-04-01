@@ -8,16 +8,14 @@ module gll.grammar;
  */
 
 
-import  std.container, std.algorithm, std.range, std.array, std.stdio,
-        std.typecons, std.conv, std.format;
-
-import gll.util;
-
 enum IsTerminal : bool { yes = true, no = false }
 enum IsEpsilon : bool { yes = true, no = false }
 
 template Gram(TK)
 {
+import std.algorithm, std.range, std.array, std.stdio,
+       std.typecons, std.conv, std.format;
+import org.panke.container.set : HashSet;
 import gll.util;
 alias TK TokenKind;
 struct Symbol {
@@ -120,7 +118,7 @@ struct Grammar
             productions = prods;
     }
 
-    alias RedBlackTree!Symbol Set;
+    alias HashSet!Symbol Set;
     alias Tuple!(Set[Symbol], "first", Set[Symbol], "follow",
                  Set[Production], "firstPlus") Sets;
 
@@ -169,15 +167,10 @@ struct Grammar
         // initialize sets
         foreach(sym; this.symbols)
         {
-            RedBlackTree!Symbol set = make!Set();
+            HashSet!Symbol set;
             if( sym.isTerminal )
                 set.insert(sym);
-            else
-            {
-                // fuck you, std.container
-                set.insert(sym);
-                set.clear();
-            }
+            
             sets[sym] = set;
         }
 
@@ -217,35 +210,27 @@ struct Grammar
         return sets;
     }
 
-     @property
+     
     Set[Symbol] followSets(Set[Symbol] _first = null)
         out(result) { assert(result !is null); }
     body
     {
         Set[Symbol] follow;
         Set[Symbol] first = _first is null ? this.firstSets : _first;
-        // initialize sets, i hate you std.container
-        foreach(sym; symbols)
-        {
-            Set tmp = make!Set();
-            tmp.insert(sym);
-            tmp.clear();
-            follow[sym] = tmp;
-        }
+        
         follow[startSymbol].insert(EOF);
-
         bool changes;
         do {
             changes = false;
             foreach(prod; productions)
             {
-                auto trailer = follow[prod.sym].dup;
+                auto trailer = follow[prod.sym];
                 foreach(part; retro(prod.rhs))
                 {
                     size_t count = follow[part].length;
                     if(part.isTerminal)
                     {
-                        trailer = first[part].dup;
+                        trailer = first[part];
                         continue;
                     }
 
@@ -261,7 +246,6 @@ struct Grammar
         return follow;
     }
 
-     @property
     Sets firstFallowSets(Set[Symbol] _first = null, Set[Symbol] _follow = null)
         out(result) { assert(result.first !is null); }
     body
@@ -271,7 +255,7 @@ struct Grammar
         Set[Production] firstPlus;
         foreach(prod; productions)
         {
-            Set tmp = make!Set();
+            Set tmp;
             foreach(i, sym; prod.rhs)
             {
                 tmp.insert(first[sym][].filter!NoEpsilon);
@@ -287,7 +271,7 @@ struct Grammar
             if(Epsilon in tmp)
             {
                 tmp.insert(follow[prod.sym][]);
-                tmp.removeKey(Epsilon);
+                tmp.remove(Epsilon);
             }
 
 
@@ -295,7 +279,7 @@ struct Grammar
         }
         return Sets(first, follow, firstPlus);
     }
-
+   
     enum AddMod { Sort, DontSort };
     void addProduction(ref Production prod, AddMod mod = AddMod.Sort)
     {
@@ -310,13 +294,13 @@ struct Grammar
         sort(productions);
     }
 
-     @property
+     
     auto nonterminals()
     {
         return productions.map!((a) => a.sym).uniq;
     }
 
-     @property
+     
     auto terminals()
     {
         // need cast because of  issues
@@ -324,7 +308,7 @@ struct Grammar
         return sort(tmp).uniq;
     }
 
-     @property
+     
     auto symbols()
     {
         return chain(terminals, nonterminals);
