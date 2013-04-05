@@ -11,7 +11,7 @@ import std.algorithm, std.range, std.array, std.stdio,
        std.typecons, std.conv, std.format, std.traits,
        std.typetuple;
        
-import org.panke.container.set : HashSet;
+import org.panke.container.set;
 import org.panke.meta.meta;
 import gll.util;
 
@@ -31,7 +31,7 @@ struct Grammar(TK)
             productions = prods;
     }
 
-    alias HashSet!Symbol Set;
+    alias CritBitTree!(Symbol, byteStringRange!Symbol) Set;
     alias Tuple!(Set*[Symbol], "first", Set*[Symbol], "follow",
                  Set*[Production], "firstPlus") Sets;
     
@@ -52,7 +52,6 @@ struct Grammar(TK)
         return true;
     }
 
-    
     bool isLL1(Sets sets = Sets.init)
     {
         auto ffSets = sets == Sets.init ? firstFallowSets : sets;
@@ -60,7 +59,6 @@ struct Grammar(TK)
         return ! m.canFind(false);
     }
 
-    
     bool ambigious(Sets sets, Production lhs, Production rhs)
     {
         auto lhsFsp = sets.firstPlus[lhs];
@@ -68,8 +66,6 @@ struct Grammar(TK)
         return setIntersection((*lhsFsp)[], (*rhsFsp)[]).walkLength > 0;
     }
 
-
-    
     Set*[Symbol] firstSets()
         out(result) { assert(result !is null); }
     body
@@ -81,7 +77,6 @@ struct Grammar(TK)
             auto set = new Set;
             if( sym.isTerminal )
                 set.insert(sym);
-            
             sets[sym] = set;
         }
 
@@ -121,7 +116,6 @@ struct Grammar(TK)
         return sets;
     }
 
-     
     Set*[Symbol] followSets(Set*[Symbol] _first = null)
         out(result) { assert(result !is null); }
     body
@@ -208,13 +202,11 @@ struct Grammar(TK)
         sort(productions);
     }
 
-     
     auto nonterminals()
     {
         return productions.map!((a) => a.sym).uniq;
     }
 
-     
     auto terminals()
     {
         // need cast because of  issues
@@ -222,7 +214,6 @@ struct Grammar(TK)
         return sort(tmp).uniq;
     }
 
-     
     auto symbols()
     {
         return chain(terminals, nonterminals);
@@ -230,7 +221,8 @@ struct Grammar(TK)
 
     /**
      * normalize grammer by removing duplicates etc.
-     *
+  :w
+  *
      */
     void normalize()
     {
@@ -238,7 +230,6 @@ struct Grammar(TK)
     }
 
 private:
-    
     void removeDuplicates()
     {
         Production[] newArr = productions.uniq.array;
@@ -371,6 +362,3 @@ void wDotItem(Sink, Production)(Sink sink, Production prod, size_t pos)
     if(pos == prod.rhs.length)
         formattedWrite(sink, "•");
 }
-
-
-

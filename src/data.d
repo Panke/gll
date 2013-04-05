@@ -186,7 +186,7 @@ struct PendingSet
 private:
     Array!Descriptor[] _R;
     alias Tuple!(GrammarSlot, "slot", GssId, "stackTop") UElem;
-    HashSet!UElem[] _U;
+    CritBitTree!(UElem, byteStringRange!(UElem))[] _U;
     size_t ringLength;
     size_t curPos;
 
