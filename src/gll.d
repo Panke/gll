@@ -8,21 +8,21 @@ import gll.grammar;
 
 enum TokenKind {a, b, c};
 
-struct Generator(alias Gram)
+struct Generator(Grammar)
 {
-    alias Gram.Grammar Grammar;
-    alias Gram.Symbol Symbol;
-    alias Gram.Production Production;
-    alias Gram.Epsilon Epsilon;
-    alias Gram.TokenKind TokenKind;
+    alias Grammar G;
+    alias G.Symbol Symbol;
+    alias G.Production Production;
+    alias G.Epsilon Epsilon;
+    alias G.TokenKind TokenKind;
 
-    const(Grammar)* gram;
+    Grammar* gram;
     size_t curIndent;
     alias Tuple!(string, "tag", int, "num") TagAndNum;
-    alias Tuple!(const Production, "prod", ulong, "pos") DottedItem;
+    alias Tuple!(Production, "prod", ulong, "pos") DottedItem;
     TagAndNum[DottedItem] prodData;
 
-    this(const(Grammar)* gram_)
+    this(Grammar* gram_)
     {
         gram = gram_;
     }

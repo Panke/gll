@@ -74,7 +74,7 @@ struct Grammar(TK)
         // initialize sets
         foreach(sym; this.symbols)
         {
-            auto set = new Set;
+            auto set = new_!Set(Set.init);
             if( sym.isTerminal )
                 set.insert(sym);
             sets[sym] = set;
@@ -122,7 +122,7 @@ struct Grammar(TK)
     {
         Set*[Symbol] follow;
         foreach(sym; symbols)
-            follow[sym] = new Set;
+            follow[sym] = new_!Set();
 
         Set*[Symbol] first = _first is null ? this.firstSets() : _first;
         
