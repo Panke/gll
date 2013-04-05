@@ -221,8 +221,6 @@ struct Grammar(TK)
 
     /**
      * normalize grammer by removing duplicates etc.
-  :w
-  *
      */
     void normalize()
     {
@@ -237,7 +235,6 @@ private:
     }
     
 public:
-    
     struct Symbol 
     {
         static string toString(TK k) { return to!string(k); }
