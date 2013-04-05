@@ -30,11 +30,12 @@ struct Grammar(TK) {
 
 // Building a grammar could look like this
 alias Grammar!TokenKind.Symbol Symbol;
+// non-terminals
 auto A = Symbol( "A" );
 auto B = Symbol( "B" );
 auto C = Symbol( "C" );
+// terminals
 auto a = Symbol(TokenKind.a);
-
 auto b = Symbol(TokenKind.b);
 auto c = Symbol(TokenKind.c);
 
@@ -59,13 +60,14 @@ g.addProductions([prd1, prd2, prd3, prd4, prd5, prd6, prd7]);
  * recognizer (generated code).
  * 
  */
+// all the generation magic happens inside the "Recognizer!()" template.
+alias Recognizer!(Token, TokenKind, compare) Recog;
 
-// all the generation magic happens inside the "Template!()" template.
-alias Generator!(Token, TokenKind, compare) Gen;
+// print the code, that would be generated
+writeln(Recog.sourceCode);
 
+
+// check if some string belongs to the language of the grammar
+Recog recog;
 bool valid = recog(someKindOfTokenRange);
 
-/*
- * To make this possible, there still will be the need 
- * for some interface between Recognizer/Grammar/TokenKind
- * that makes it possible to 
