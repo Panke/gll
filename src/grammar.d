@@ -12,6 +12,7 @@ import std.algorithm, std.range, std.array, std.stdio,
        std.typetuple;
        
 import org.panke.container.set;
+import org.panke.container.map : TreeMap = Map;
 import org.panke.meta.meta;
 import gll.util;
 
@@ -23,7 +24,7 @@ struct Grammar(TK)
 {
     Symbol startSymbol;
     Production[] productions;
-
+    alias TK TokenKind;
     this(Symbol start, Production[] prods=[])
     {
         startSymbol = start;
@@ -31,9 +32,11 @@ struct Grammar(TK)
             productions = prods;
     }
 
-    alias CritBitTree!(Symbol, byteStringRange!Symbol) Set;
-    alias Tuple!(Set*[Symbol], "first", Set*[Symbol], "follow",
-                 Set*[Production], "firstPlus") Sets;
+    alias CritBitTree!(Symbol) Set; 
+    alias TreeMap!(Symbol, Set*) SSMap;
+    alias TreeMap!(Production, Set*) PSMap;
+    alias Tuple!(SSMap*, "first", SSMap*, "follow",
+                 PSMap*, "firstPlus") Sets;
     
     bool isLL1( Symbol nonterm, Sets sets = Sets.init)
     {
@@ -61,25 +64,24 @@ struct Grammar(TK)
 
     bool ambigious(Sets sets, Production lhs, Production rhs)
     {
-        auto lhsFsp = sets.firstPlus[lhs];
-        auto rhsFsp = sets.firstPlus[rhs];
+        Set* lhsFsp = (*sets.firstPlus)[lhs];
+        auto rhsFsp = (*sets.firstPlus)[rhs];
         return setIntersection((*lhsFsp)[], (*rhsFsp)[]).walkLength > 0;
     }
 
-    Set*[Symbol] firstSets()
+    SSMap* firstSets()
         out(result) { assert(result !is null); }
     body
     {
-        Set*[Symbol] sets;
+        SSMap* sets = new SSMap;
         // initialize sets
-        foreach(sym; this.symbols)
+        foreach(Symbol sym; this.symbols)
         {
-            auto set = new_!Set(Set.init);
+            auto set = new Set;
             if( sym.isTerminal )
                 set.insert(sym);
-            sets[sym] = set;
+            (*sets)[sym] = set;
         }
-
         // fix point iterate
         bool changes;
         do {
@@ -88,11 +90,13 @@ struct Grammar(TK)
             {
                 auto sym = prod.sym;
                 auto rhs = prod.rhs;
-                auto fS = sets[sym];
+                debug writeln("x");
+                auto fS = (*sets)[sym];
+                debug writeln("y");
                 size_t count = fS.length;
                 foreach(i, part; rhs)
                 {
-                    auto firstSetPart = sets[part];
+                    auto firstSetPart = (*sets)[part];
                     if(Epsilon in *firstSetPart)
                     {
                         fS.insert((*firstSetPart)[].filter!(NoEpsilon));
@@ -116,36 +120,37 @@ struct Grammar(TK)
         return sets;
     }
 
-    Set*[Symbol] followSets(Set*[Symbol] _first = null)
+    SSMap* followSets(SSMap* _first = null)
         out(result) { assert(result !is null); }
     body
     {
-        Set*[Symbol] follow;
+        SSMap* follow = new SSMap;
         foreach(sym; symbols)
-            follow[sym] = new_!Set();
+            (*follow)[sym] = new Set;
 
-        Set*[Symbol] first = _first is null ? this.firstSets() : _first;
+        auto first = _first is null ? this.firstSets() : _first;
         
-        follow[startSymbol].insert(Eof);
+        (*follow)[startSymbol].insert(Eof);
         bool changes;
         do {
             changes = false;
             foreach(prod; productions)
             {
-                auto trailer = follow[prod.sym];
+                Set* trailer = follow.at(prod.sym);
                 foreach(part; retro(prod.rhs))
                 {
-                    size_t count = follow[part].length;
+                    size_t count = (*follow)[part].length;
                     if(part.isTerminal)
                     {
-                        trailer = first[part];
+                        trailer = (*first)[part];
                         continue;
                     }
 
-                    follow[part].insert((*trailer)[]);
-                    trailer.insert((*first[part])[].filter!(NoEpsilon));
+                    (*follow)[part].insert((*trailer)[]);
+                    trailer.insert((*first.get(part))[].filter!(NoEpsilon));
+//                     trailer.insert((*(*first)[part]))[].filter!(NoEpsilon));
 
-                    if(follow[part].length > count)
+                    if(follow.at(part).length > count)
                         changes = true;
                 }
             }
@@ -154,21 +159,22 @@ struct Grammar(TK)
         return follow;
     }
 
-    Sets firstFallowSets(Set*[Symbol] _first = null, Set*[Symbol] _follow = null)
+    Sets firstFallowSets(SSMap* _first = null, SSMap* _follow = null)
         out(result) { assert(result.first !is null); }
     body
     {
-        Set*[Symbol] first = _first is null ? firstSets() : _first;
-        Set*[Symbol] follow = _follow is null ? followSets(_first) : _follow;
-        Set*[Production] firstPlus;
+        SSMap* first = _first is null ? firstSets() : _first;
+        SSMap* follow = _follow is null ? followSets(_first) : _follow;
+        PSMap* firstPlus = new PSMap;
         foreach(prod; productions)
         {
             Set* tmp = new Set;
             foreach(i, sym; prod.rhs)
             {
-                tmp.insert((*first[sym])[].filter!NoEpsilon);
+                tmp.insert((*first.get(sym))[].filter!(NoEpsilon));
+//                 tmp.insert((*first[sym])[].filter!NoEpsilon);
                 // last item contains epsilon
-                if(Epsilon in (*first[sym]))
+                if(Epsilon in (*first.get(sym)))
                 {
                     if(i == prod.rhs.length - 1)
                         tmp.insert(Epsilon);
@@ -178,12 +184,12 @@ struct Grammar(TK)
 
             if(Epsilon in *tmp)
             {
-                tmp.insert((*follow[prod.sym])[]);
+                tmp.insert((*follow.get(prod.sym))[]);
                 tmp.remove(Epsilon);
             }
 
 
-            firstPlus[prod] = tmp;
+            (*firstPlus)[prod] = tmp;
         }
         return Sets(first, follow, firstPlus);
     }
@@ -204,19 +210,22 @@ struct Grammar(TK)
 
     auto nonterminals()
     {
-        return productions.map!((a) => a.sym).uniq;
+        return filter!(x => x.isTerminal == IsTerminal.no)(symbols);
     }
 
     auto terminals()
     {
-        // need cast because of  issues
-        Symbol[] tmp = cast(Symbol[])productions.map!(( a) => a.rhs[0..$]).joiner.array;
-        return sort(tmp).uniq;
+        return filter!(x => x.isTerminal == IsTerminal.yes)(symbols);
     }
 
     auto symbols()
     {
-        return chain(terminals, nonterminals);
+        return chain(
+                    productions.map!((a) => a.rhs).joiner,
+                    productions.map!((a) => a.sym))
+                   .array
+                   .sort
+                   .uniq;
     }
 
     /**
@@ -235,20 +244,22 @@ private:
     }
     
 public:
-    struct Symbol 
+    static struct Symbol 
     {
-        static string toString(TK k) { return to!string(k); }
         string name;
         IsTerminal isTerminal = IsTerminal.no;
         IsEpsilon isEpsilon = IsEpsilon.no;
         TK kind;
-        private debug auto _TKNames = Array!(string, Map!(toString, EnumMembers!TK));
+       
+        static string toString(TK k) { return to!string(k); }
+        //private debug auto _TKNames = Array!(string, Map!(toString, EnumMembers!TK));
+        
         // generally used to define non-terminal symbols.
         // name must be different from every element of TK
         this(string name, IsEpsilon eps=IsEpsilon.no)
         in
         {
-            debug assert(!_TKNames.canFind(name));
+          //  debug assert(!_TKNames.canFind(name));
         }
         body
         {
@@ -265,7 +276,7 @@ public:
             this.kind = kind;
         }
         
-        bool opEquals(ref Symbol rhs)
+        bool opEquals(Symbol rhs)
         {
             return name == rhs.name;
         }
@@ -284,7 +295,7 @@ public:
             return typeid(name).getHash(&name);
         }
     }
-
+    
     enum Epsilon = Symbol("ε",  IsEpsilon.yes);
     enum Eof = Symbol(TK.Eof);
 
@@ -352,7 +363,7 @@ void wDotItem(Sink, Production)(Sink sink, Production prod, size_t pos)
     foreach(i, sym; prod.rhs)
     {
         if(i == pos)
-            formattedWrite(sink, "% s%s", "•", sym.name);
+            formattedWrite(sink, "%s%s", "•", sym.name);
         else
             formattedWrite(sink, " %s", sym.name);
     }

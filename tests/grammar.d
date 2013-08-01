@@ -37,28 +37,28 @@ unittest {
     {
         auto g = Grammar!TokenKind(S, [SE, SES, EN]);
         auto sets = g.firstFallowSets();
-        assEq(g.isLL1(S, sets), false);
+        assFalse(g.isLL1(S, sets));
     }, "LL1-1");
     testCase("test LL1 property on LL1 grammar",
     {
         auto g = Grammar!TokenKind(S, [SE, ET1, T2, F1]);
         auto sets = g.firstFallowSets();
-        assEq(g.isLL1(S, sets), true);
+        assTrue(g.isLL1(S, sets));
     }, "LL1-2");
 
     testCase("test LL1 property on grammar without terminals",
     {
         auto g = Grammar!TokenKind(S, [SE, ET1, T2]);
         auto sets = g.firstFallowSets();
-        assEq(g.isLL1(S, sets), true);
+        assTrue(g.isLL1(S, sets));
     }, "LL1-3");
 
     testCase("test LL1 property on grammar without terminals",
     {
         auto g = Grammar!TokenKind(S, [SE, ET1, ET2, ET3, T2, F1]);
         auto sets = g.firstFallowSets();
-        assEq(g.isLL1(E, sets), false);
-        assEq(g.isLL1(sets), false);
+        assFalse(g.isLL1(E, sets));
+        assFalse(g.isLL1(sets));
     }, "LL1-4");
 
     // test some simpler grammar functions like firstSets
@@ -66,6 +66,6 @@ unittest {
     {
         auto g = Grammar!TokenKind(S, [SE, ET1, ET2, ET3, T2, F1]);
         auto sets = g.firstFallowSets();
-        assEq(sets.first[E].length, 1);
+        assEq(sets.first.at(E).length, 1);
     });
 }

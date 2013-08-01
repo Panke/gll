@@ -60,14 +60,16 @@ g.addProductions([prd1, prd2, prd3, prd4, prd5, prd6, prd7]);
  * recognizer (generated code).
  * 
  */
-// all the generation magic happens inside the "Recognizer!()" template.
-alias Recognizer!(Token, TokenKind, compare) Recog;
+
+// all the generation magic happens inside the "Generator!()" template.
+// but we need a handle to the grammar. Hmmm ...
+alias Generator!(TokenKind) Generator;
 
 // print the code, that would be generated
-writeln(Recog.sourceCode);
+writeln(Generator.generateRecognizer(grammar));
 
+mixin(Generator.generateRecognizer(grammar, "Recog"));
 
-// check if some string belongs to the language of the grammar
-Recog recog;
-bool valid = recog(someKindOfTokenRange);
+Recog!(Token, compare) recog;
+recog.check("some string");
 

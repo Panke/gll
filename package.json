@@ -2,11 +2,11 @@
     "name" : "gll",
     "description" : "gll parser generator",
     
-    "preBuildCommands" : ["rm -rf build"],
     "dependencies" : {
         "probat": ">=0.1.0 <=0.2.0",
         "container": ">=0.1.0 <=0.2.0",
         "meta": ">=0.1.0 <=0.2.0",
+        "mustache-d": "~master"
     },
     "configurations" : [
         {
@@ -14,8 +14,8 @@
             "targetType" : "executable",
             "targetPath" : "build",
             "targetName" : "gll-test",
-            "versions" : ["unittest", "test_gll"],
-            "dflags" : ["-unittest", "-g", "-debug"],
+            "versions" : [ "test_gll"],
+            "buildType" : "unittest",
             "sourcePaths" : ["tests"],
             "stringImportPaths" : ["testimports"],
         },

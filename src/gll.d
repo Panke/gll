@@ -8,35 +8,34 @@ import gll.grammar;
 
 enum TokenKind {a, b, c};
 
-struct Generator(Grammar)
+struct Generator(G)
 {
-    alias Grammar G;
     alias G.Symbol Symbol;
     alias G.Production Production;
-    alias G.Epsilon Epsilon;
-    alias G.TokenKind TokenKind;
-
-    Grammar* gram;
+    alias G.TokenKind TK;
+    
+    G* gram;
     size_t curIndent;
     alias Tuple!(string, "tag", int, "num") TagAndNum;
     alias Tuple!(Production, "prod", ulong, "pos") DottedItem;
     TagAndNum[DottedItem] prodData;
 
-    this(Grammar* gram_)
+    
+    this(G* grammar)
     {
-        gram = gram_;
+        gram = grammar;
     }
-
+    
     void generateParser(Sink)(Sink sink)
     {
         precalc();
         genGrammarSlotEnum(sink);
         genParserStruct(sink);
     }
-
+    
     void precalc()
     {
-//         sets = gram.firstFallowSets;
+        auto sets = gram.firstFallowSets;
         int num = 1;
         foreach(prod; gram.productions)
             foreach(pos; 0 .. prod.rhs.length+1)
@@ -58,7 +57,7 @@ struct Generator(Grammar)
 
     void genGrammarSlotEnum(Sink)(Sink sink)
     {
-        sink.put("enum Label\n{\n");
+        sink.put("enum GrammarSlot\n{\n");
         {
             mixin(indent(4));
             foreach(prod; gram.productions)
@@ -77,22 +76,6 @@ struct Generator(Grammar)
             }
         }
         sink.put("}\n");
-    }
-
-    void genParserStruct(Sink)(Sink sink)
-    {
-        sink.put(ParserStructStart);
-        {
-            mixin(indent(12));
-            foreach(sym; gram.nonterminals)
-            {
-                mixin(indent(4));
-                genNonTerminalCase(sink, sym);
-            }
-        }
-        sink.put(ParserWhileEnd);
-            genTestFunctions(sink);
-        sink.put("}}");
     }
 
     void genNonTerminalCase(Sink)(Sink sink, Symbol sym)
@@ -282,33 +265,3 @@ struct Generator(Grammar)
         return result;
     }
 }
-
-string ParserStructStart = q"EOS
-struct Parser
-{
-    dstring input;
-    GllContext context;
-    this(dstring _input)
-    {
-        input = _input;
-        context = new GllContext();
-    }
-
-    bool parse()
-    {
-        InputPos curIdx;
-        GssId curTop;
-        Tags curLabel = Loop;
-        with(Tags) {
-
-        while(true)
-        {
-            final switch(curLabel)
-            {
-EOS";
-
-string ParserWhileEnd= q"EOS
-            }
-        }
-    }
-EOS";

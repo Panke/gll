@@ -7,27 +7,27 @@ std.functional, std.stdio, std.file, std.format, std.conv, std.typetuple, std.ty
 unittest {
 
     enum Toks { Eof, a, b, c }
-    //mixin Gram!Toks;
-//     immutable G.Symbol A = G.Symbol( "A" );
-//     immutable G.Symbol B = G.Symbol( "B" );
-//     immutable G.Symbol C = G.Symbol( "C" );
-//     immutable G.Symbol a = G.Symbol( "a", Toks.a);
-//     immutable G.Symbol b = G.Symbol( "b", Toks.b);
-//     immutable G.Symbol c = G.Symbol( "c", Toks.c);
+    alias Grammar!Toks G;
+    G.Symbol A = G.Symbol( "A" );
+    G.Symbol B = G.Symbol( "B" );
+    G.Symbol C = G.Symbol( "C" );
+    G.Symbol a = G.Symbol(Toks.a);
+    G.Symbol b = G.Symbol(Toks.b);
+    G.Symbol c = G.Symbol(Toks.c);
 
-//     G.Production prd5 = G.Production( C, [A, B, C] );
-//     G.Production prd3 = G.Production( B, [b] );
-//     G.Production prd1 = G.Production( A, [ a ] );
-//     G.Production prd2 = G.Production( B, [B, A ]);
-//     G.Production prd4 = G.Production( B, [G.Epsilon] );
-//     G.Production prd6 = G.Production( A, [G.Epsilon] );
-//     G.Production prd7 = G.Production( C, [ c ] );
+    G.Production prd5 = G.Production( C, [A, B, C] );
+    G.Production prd3 = G.Production( B, [b] );
+    G.Production prd1 = G.Production( A, [ a ] );
+    G.Production prd2 = G.Production( B, [B, A ]);
+    G.Production prd4 = G.Production( B, [G.Epsilon] );
+    G.Production prd6 = G.Production( A, [G.Epsilon] );
+    G.Production prd7 = G.Production( C, [ c ] );
 
-//     G.Grammar g = G.Grammar(C, []);
-//     g.addProductions([prd1, prd2, prd3, prd4, prd5, prd6, prd7]);
+    G g = G(c, []);
+    g.addProductions([prd1, prd2, prd3, prd4, prd5, prd6, prd7]);
 
 //     auto app = appender!(string)();
-//     auto gen = Generator!G(&g);
-//     gen.generateParser(app);
+    auto gen = Generator!G(&g);
+    gen.precalc;
 //     writeln(app.data);
 }
