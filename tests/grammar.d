@@ -22,7 +22,7 @@ unittest {
 
     auto SE = Production(S, [E]);
     auto SES = Production(S, [E, Semi, S]);
-    auto SEpsi = Production(S, [Grammar!TokenKind.Epsilon]);
+    auto SEpsi = Production(S, [Grammar!(TokenKind).Epsilon]);
 
     auto ET1 = Production(E, [T]);
     auto ET2 = Production(E, [T, Plus, T]);

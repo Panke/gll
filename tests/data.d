@@ -12,8 +12,6 @@ enum TestLabel
     A, B, C, D
 }
 
-alias Gll!TestLabel.PendingSet PendingSet;
-alias Gll!TestLabel.Descriptor Descriptor;
 alias TestLabel GrammarSlot;
 unittest
 {
@@ -21,7 +19,7 @@ unittest
     {
         enum rl = 4;
         PendingSet set = PendingSet(rl);
-        Descriptor desc = Descriptor(cast(GrammarSlot) 1, InputPos(1), GssId(0));
+        Descriptor desc = Descriptor( 1, InputPos(1), GssId(0));
         set.add(desc);
         auto res = set.pop();
         assEq(res, desc);

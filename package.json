@@ -16,8 +16,9 @@
             "targetName" : "gll-test",
             "versions" : [ "test_gll"],
             "buildType" : "unittest",
+	    "dflags" : ["-unittest"],
             "sourcePaths" : ["tests"],
-            "stringImportPaths" : ["testimports"],
+            "stringImportPaths" : ["testimports", "imports"],
         },
     ]
 }

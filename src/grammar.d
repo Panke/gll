@@ -90,9 +90,7 @@ struct Grammar(TK)
             {
                 auto sym = prod.sym;
                 auto rhs = prod.rhs;
-                debug writeln("x");
                 auto fS = (*sets)[sym];
-                debug writeln("y");
                 size_t count = fS.length;
                 foreach(i, part; rhs)
                 {
@@ -119,7 +117,34 @@ struct Grammar(TK)
         } while(changes);
         return sets;
     }
-
+    
+    static Set* fsReduce(Symbol[] syms, SSMap* firstSets, Set* result = null)
+    {
+        if(result is null)
+            result = new Set;
+        
+        foreach(i, part; syms)
+        {
+            auto firstSetPart = (*firstSets)[part];
+            if(Epsilon in *firstSetPart)
+            {
+                result.insert((*firstSetPart)[].filter!(NoEpsilon));
+                // if it's the last item and it derives the empty string,
+                // add the empty string
+                if(i == syms.length-1)
+                    result.insert(Epsilon);
+            }
+            else
+            {
+                result.insert((*firstSetPart)[]);
+                // break at first symbol that does not
+                // derive the empty string
+                break;
+            }
+        }
+        return result;
+    }
+    
     SSMap* followSets(SSMap* _first = null)
         out(result) { assert(result !is null); }
     body
@@ -227,7 +252,13 @@ struct Grammar(TK)
                    .sort
                    .uniq;
     }
-
+    
+    size_t ringLength()
+    {
+        return productions.map!(x => x.rhs.length)
+               .reduce!(max);
+    }
+    
     /**
      * normalize grammer by removing duplicates etc.
      */
@@ -370,3 +401,4 @@ void wDotItem(Sink, Production)(Sink sink, Production prod, size_t pos)
     if(pos == prod.rhs.length)
         formattedWrite(sink, "•");
 }
+

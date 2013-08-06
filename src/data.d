@@ -24,10 +24,8 @@ struct InputPos
 // 2^32 should be more than enough
 struct GssId { uint _id; alias _id this; }
 
-template Gll(alias Label)
-{
 
-alias Label GrammarSlot;
+alias uint GrammarSlot;
 struct GssLabel
 {
     this(GrammarSlot _slot, InputPos _pos)
@@ -256,6 +254,16 @@ class GllContext
     Gss gss;
     PendingSet pending;
 
+    this(Grammar)(Grammar* g)
+    {
+        pending = PendingSet(g.ringLength);
+    }
+   
+    this(int dummy = 0)()
+    {
+        pending = PendingSet(25);
+    }
+    
     GssId create(GrammarSlot slot, InputPos pos, GssId parent)
     {
         auto result = gss.create(slot, pos, parent);
@@ -280,6 +288,5 @@ class GllContext
         foreach(id; r)
             add(gss[u].label.slot, pos, id);
     }
-}
 }
 
