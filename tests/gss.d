@@ -15,7 +15,7 @@ unittest {
         Gss gss = Gss();
     });
 
-    testCase("Add to first elem and check popped parents",
+    testCase("Add to first elem and check popped children",
     {
         Gss gss = Gss();
         foreach(ushort i; 1 .. 11)
@@ -29,7 +29,7 @@ unittest {
             auto res = gss.create(1, InputPos(1), GssId(i));
         }
 
-        // pop and check if it has indeed 10 parents
+        // pop and check if it has indeed 10 children
          auto res = gss.pop(GssId(11), InputPos(1));
          assEq(10, res.length);
     });
@@ -49,8 +49,8 @@ unittest {
     testCase("check return value of opIndex is mutable",
     {
         Gss gss = Gss();
-        auto old_length = gss[GssId(0)].parents.length;
-        gss[GssId(0)].parents.insertBack(GssId(12));
-        assEq(gss[GssId(0)].parents.length, old_length+1);
+        auto old_length = gss[GssId(0)].children.length;
+        gss[GssId(0)].children.insertBack(GssId(12));
+        assEq(gss[GssId(0)].children.length, old_length+1);
     });
 }

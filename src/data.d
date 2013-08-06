@@ -13,6 +13,9 @@ import org.panke.container.set;
 
 import gll.grammar;
 
+/**
+ * Represents an index into the input array
+ */
 struct InputPos
 {
     uint _pos;
@@ -24,36 +27,53 @@ struct InputPos
 // 2^32 should be more than enough
 struct GssId { uint _id; alias _id this; }
 
+/**
+ * Represents a code position. These are basically
+ * CodeLabels, the label Loop and one Label for each
+ * Nonterminal.
+ */
+alias uint CodeLabel;
 
-alias uint GrammarSlot;
-struct GssLabel
+/**
+ * A GssNode is labeled with both an InputPos and
+ * a CodeLabel
+ */
+struct GssNodeData
 {
-    this(GrammarSlot _slot, InputPos _pos)
+    this(CodeLabel _slot, InputPos _pos)
     {
         slot = _slot;
         pos = _pos;
     }
     InputPos pos;
-    GrammarSlot slot;
+    CodeLabel slot;
 }
 
+/**
+ * Graph structured stack that replaces the call stack in 
+ * the GLL algorithm.
+ * 
+ */
 struct Gss
 {
     struct GssNode
     {
-        this(GssLabel _label)
+        this(GssNodeData _data)
         {
-            label = _label;
-            parents = new Array!GssId();
+            data = _data;
+            children = new Array!GssId();
         }
 
-        GssLabel label;
-        Array!GssId* parents;
+        GssNodeData data;
+        // since distinct stacks in the GSS will be merged,
+        // a 'thread' can have more than one point to return to.
+        Array!GssId* children;
     }
 
-    alias GssId[const(GssLabel)] GssLookupTable;
+    // for faster Lookup of GssNodes
+    alias GssId[const(GssNodeData)] GssLookupTable;
 
-    enum L0 = GssLabel(cast(GrammarSlot)(0), InputPos(0));
+    enum L0 = GssNodeData(cast(CodeLabel)(0), InputPos(0));
 
     static Gss opCall()
     {
@@ -64,53 +84,53 @@ struct Gss
     }
 
     // return value for create
-    alias Tuple!(GssId, "id", InputPos[], "poppedAt") CreateRT;
+    alias Tuple!(GssId, "id", Array!(InputPos)*, "poppedAt") CreateRT;
     /**
      * Create a new node and return it's identifier and the positions
      * where it has been popped earlier.
      */
-    CreateRT create(GrammarSlot slot, InputPos pos, GssId parent)
+    CreateRT create(CodeLabel slot, InputPos pos, GssId children)
     {
 
         // check if there already exists a GssNode labelled (slot, i)
-        GssLabel label = GssLabel(slot, pos);
+        GssNodeData label = GssNodeData(slot, pos);
         GssId id;
         if(auto idxptr = label in _index)
         {
-            // node exists, does edge to designated parent exist?
+            // node exists, does edge to designated children (i.e returnpoint) exist?
             id = *idxptr;
             GssNode node = _data[id];
-            if(!canFind((*node.parents)[], parent))
+            if(!canFind((*node.children)[], children))
             {
-                node.parents.insertBack(parent);
+                node.children.insertBack(children);
             }
         } else
         {
             id = GssId(cast(ushort) _data.length);
-            GssNode node = GssNode(GssLabel(slot, pos));
-            node.parents.insertBack(parent);
+            GssNode node = GssNode(GssNodeData(slot, pos));
+            node.children.insertBack(children);
             _data.insertBack(node);
-            _index[node.label] = id;
+            _index[node.data] = id;
         }
 
         // check if it was previously popped
-        return CreateRT(id, _popped.get(id, []));
+        return CreateRT(id, _popped.get(id, null));
     }
 
     /**
-     * Pop a node from the Gss and return all it's parents
+     * Pop a node from the Gss and return all it's children
      */
     auto pop(GssId elem, InputPos pos)
         in { assert(elem != 0); } // 0 is GssId of L0
     body
     {
-        auto entry = _popped.get(elem, []);
-        if(entry.length != 0)
-            assumeSafeAppend(entry);
-        entry ~= pos;
+        auto entry = _popped.get(elem, null);
+        if(entry is null)
+            entry = new Array!(InputPos);
+        entry.insertBack(pos);
         _popped[elem] = entry;
 
-        return (*_data[elem].parents)[];
+        return (*_data[elem].children)[];
     }
 
     /**
@@ -142,8 +162,8 @@ struct Gss
         foreach(GssNode node; _data)
         {
             i++;
-            foreach(parent; (*node.parents)[])
-                formattedWrite(output, "n%d -> n%d\n", i, parent);
+            foreach(children; (*node.children)[])
+                formattedWrite(output, "n%d -> n%d\n", i, children);
         }
 
         output.put("\n}\n");
@@ -162,12 +182,12 @@ struct Gss
     /**
      * Remember all elements that have been popped so far.
      */
-    private InputPos[][GssId] _popped;
+    private Array!(InputPos)*[GssId] _popped;
 }
 
 struct Descriptor
 {
-    this(GrammarSlot _slot, InputPos _pos, GssId stackTop)
+    this(CodeLabel _slot, InputPos _pos, GssId stackTop)
     {
         pos = _pos;
         top = stackTop;
@@ -176,14 +196,14 @@ struct Descriptor
 
     InputPos pos;
     GssId top;
-    GrammarSlot slot;
+    CodeLabel slot;
 }
 
 struct PendingSet
 {
 private:
     Array!Descriptor[] _R;
-    alias Tuple!(GrammarSlot, "slot", GssId, "stackTop") UElem;
+    alias Tuple!(CodeLabel, "slot", GssId, "stackTop") UElem;
     CritBitTree!(UElem, byteStringRange!(UElem))[] _U;
     size_t ringLength;
     size_t curPos;
@@ -232,7 +252,7 @@ public:
         return _R[curPos].removeAny;
     }
 
-    void add(GrammarSlot slot, InputPos pos, GssId top)
+    void add(CodeLabel slot, InputPos pos, GssId top)
     {
         add(Descriptor(slot, pos, top));
     }
@@ -256,23 +276,28 @@ class GllContext
 
     this(Grammar)(Grammar* g)
     {
+        gss = Gss();
         pending = PendingSet(g.ringLength);
     }
    
     this(int dummy = 0)()
     {
+        gss = Gss();
         pending = PendingSet(25);
     }
     
-    GssId create(GrammarSlot slot, InputPos pos, GssId parent)
+    GssId create(CodeLabel slot, InputPos pos, GssId children)
     {
-        auto result = gss.create(slot, pos, parent);
-        foreach(_pos; result.poppedAt)
-            add(slot, _pos, parent);
+        auto result = gss.create(slot, pos, children);
+        if(result.poppedAt !is null)
+        {
+            foreach(_pos; (*result.poppedAt)[])
+                add(slot, _pos, children);
+        }
         return result.id;
     }
 
-    void add(GrammarSlot slot, InputPos pos, GssId top)
+    void add(CodeLabel slot, InputPos pos, GssId top)
     {
         pending.add(slot, pos, top);
     }
@@ -286,7 +311,7 @@ class GllContext
             return;
         auto r = gss.pop(u, pos);
         foreach(id; r)
-            add(gss[u].label.slot, pos, id);
+            add(gss[u].data.slot, pos, id);
     }
 }
 
