@@ -1,0 +1,24 @@
+{
+    "name" : "gll",
+    "description" : "gll parser generator",
+    
+    "dependencies" : {
+        "probat": ">=0.1.0 <=0.2.0",
+        "container": ">=0.1.0 <=0.2.0",
+        "meta": ">=0.1.0 <=0.2.0",
+        "mustache-d": "~master"
+    },
+    "configurations" : [
+        {
+            "name" : "test",
+            "targetType" : "executable",
+            "targetPath" : "build",
+            "targetName" : "gll-test",
+            "versions" : [ "test_gll"],
+            "buildType" : "unittest",
+	    "dflags" : ["-unittest"],
+            "sourcePaths" : ["tests"],
+            "stringImportPaths" : ["testimports", "imports"],
+        },
+    ]
+}
